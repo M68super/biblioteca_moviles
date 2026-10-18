@@ -1,4 +1,8 @@
 <?php
+// Iniciar sesión globalmente
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $host = 'localhost';
 $database = 'phone_catalog';
@@ -14,9 +18,7 @@ try {
         PDO::ATTR_EMULATE_PREPARES   => false
     ]);
 } catch (PDOException $e) {
-    // El error detallado se guarda en el registro del servidor.
     error_log('Error de conexión a la base de datos: ' . $e->getMessage());
-
     http_response_code(500);
     exit('No se ha podido conectar con el catálogo. Inténtalo más tarde.');
 }
