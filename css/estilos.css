@@ -1,3 +1,6 @@
+/* ==========================================================================
+   1. CONFIGURACIÓN BASE Y RESET GENERAL
+   ========================================================================== */
 * {
     box-sizing: border-box;
 }
@@ -15,32 +18,92 @@ body {
     margin: 0 auto;
 }
 
-/* Cabecera idéntica con el color azul oscuro original del index */
+.espacio-cuerpo {
+    margin-top: 35px !important;
+    margin-bottom: 50px !important;
+}
+
+/* ==========================================================================
+   2. CABECERA Y NAVEGACIÓN GLOBAL
+   ========================================================================== */
 .cabecera {
     padding: 30px 0;
     background: #18263b;
     color: white;
 }
 
+.header-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
 .sobrelinea {
-    margin: 0 0 8px;
+    margin: 0;
     color: #a9c5ff;
     font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 2px;
 }
 
+.sobrelinea a {
+    color: #a9c5ff;
+    text-decoration: none;
+}
+
 .cabecera h1 {
-    margin: 0;
-    font-size: clamp(2rem, 5vw, 3rem);
+    margin: 0 0 8px 0;
+    font-size: clamp(2rem, 5vw, 2.5rem);
     line-height: 1.2;
+    color: #ffffff;
 }
 
 .subtitulo {
-    margin-bottom: 0;
+    margin: 0;
     color: #d4dceb;
+    font-size: 0.95rem;
 }
 
+.usuario-logueado {
+    color: #a9c5ff;
+    margin-right: 15px;
+    font-size: 0.9rem;
+}
+
+.badge-admin {
+    background: #e74c3c;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-left: 5px;
+}
+
+.btn-sesion {
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-sesion:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.btn-registro {
+    background: #a9c5ff !important;
+    color: #18263b !important;
+    font-weight: bold;
+    margin-left: 6px;
+}
+
+/* ==========================================================================
+   3. TARJETAS Y CATÁLOGO DE MÓVILES (INDEX)
+   ========================================================================== */
 .introduccion {
     padding: 28px 0 18px;
 }
@@ -48,10 +111,7 @@ body {
 .introduccion h2,
 .encabezado-catalogo h2 {
     margin-top: 0;
-}
-
-.introduccion p {
-    color: #596579;
+    color: #18263b;
 }
 
 .catalogo {
@@ -73,12 +133,24 @@ body {
     color: #263d62;
     font-size: 0.9rem;
     white-space: nowrap;
+    font-weight: 600;
 }
 
 .grid-moviles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: 18px;
+}
+
+.card-link-wrapper {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-link-wrapper:hover {
+    transform: translateY(-3px);
 }
 
 .tarjeta {
@@ -92,12 +164,16 @@ body {
 .tarjeta h3 {
     margin: 4px 0 12px;
     font-size: 1.25rem;
+    color: #1e293b;
 }
 
 .marca {
     margin: 0;
     color: #3264b3;
     font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
 }
 
 .familia,
@@ -105,6 +181,919 @@ body {
     margin: 6px 0;
     color: #596579;
     font-size: 0.95rem;
+}
+
+.tier-badge {
+    float: right;
+    background: #e4ebf7;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #3264b3;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   4. PANEL DE ADMINISTRACIÓN Y FORMULARIOS
+   ========================================================================== */
+.admin-box {
+    background: #fffdfd;
+    border: 2px dashed #e74c3c;
+    padding: 25px;
+    border-radius: 12px;
+    margin-top: 25px;
+}
+
+.admin-box.modo-borrado {
+    border: 2px dashed #c0392b;
+    background: #fff5f5;
+}
+
+.admin-modes-bar {
+    margin-bottom: 20px;
+}
+
+.btn-admin-modo {
+    display: inline-block;
+    padding: 8px 16px;
+    margin-right: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.btn-crear { background: #27ae60; color: white; }
+.btn-editar { background: #e67e22; color: white; }
+.btn-borrar-modo { background: #c0392b; color: white; }
+
+.admin-selector-box {
+    background: #fdfefe;
+    border: 1px solid #d5dbdb;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.modo-borrado-box {
+    background: #fde8e8 !important;
+    border-color: #f56565 !important;
+}
+
+.admin-selector-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.admin-selector-row select {
+    flex: 2;
+}
+
+.btn-cargar, .btn-cargar-borrar {
+    flex: 1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 8px;
+}
+.btn-cargar { background: #e67e22; }
+.btn-cargar-borrar { background: #c0392b; }
+
+.alerta-exito {
+    background: #d4edda;
+    color: #155724;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.alerta-error {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+/* Acordeones y campos del formulario */
+.categoria-filtro {
+    background: #f8fafc;
+    border: 1px solid #e0e5ed;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 12px 15px;
+}
+
+.categoria-filtro summary {
+    font-weight: 700;
+    color: #18263b;
+    cursor: pointer;
+}
+
+.categoria-contenido {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed #cbd5e1;
+}
+
+.categoria-contenido.block-layout {
+    display: block;
+}
+
+label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #334155;
+}
+
+select, input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+textarea {
+    resize: vertical;
+}
+
+.storage-block-container input[type="number"] {
+    width: 120px;
+}
+
+.storage-version-row {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.cam-main-box {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.cam-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.aux-camara-box {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+.aux-title {
+    margin-top: 0;
+    color: #1e293b;
+}
+
+.btn-eliminar-aux {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-add-aux {
+    background: #3264b3;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
+
+.dim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.dim-subgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.precios-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.checkbox-label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.price-input-box {
+    margin-top: 5px;
+    margin-left: 20px;
+}
+
+.input-media {
+    background: #eef2f7 !important;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+.textarea-admin {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.variantes-admin-box {
+    margin-top: 15px;
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.variantes-admin-box h3 {
+    margin-top: 0;
+    font-size: 1rem;
+    color: #3264b3;
+}
+
+.input-search-filter {
+    margin-bottom: 10px;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+}
+
+.scrollable-checkbox-list {
+    max-height: 160px;
+    overflow-y: auto;
+    border: 1px solid #cbd5e1;
+    padding: 10px;
+    border-radius: 6px;
+    background: white;
+}
+
+.btn-submit-success, .btn-submit-edit, .btn-submit-danger {
+    width: 100%;
+    margin-top: 15px;
+    padding: 12px;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-submit-success { background: #27ae60; }
+.btn-submit-edit { background: #e67e22; }
+.btn-submit-danger { background: #c0392b; }
+
+.aviso-borrar-instruccion {
+    text-align: center;
+    color: #c0392b;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.search-buttons-row {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-aplicar-filtros {
+    flex: 2;
+    padding: 12px;
+    background: #3264b3;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.btn-restablecer-filtros {
+    flex: 1;
+    padding: 12px;
+    background: #e4ebf7;
+    color: #3264b3;
+    text-decoration: none;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    line-height: normal;
+}
+
+/* ==========================================================================
+   5. PÁGINA DE DETALLES (DETALLES.PHP)
+   ========================================================================== */
+.header-detalles-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr 1fr;
+    align-items: center;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.enlace-volver {
+    color: #a9c5ff;
+    text-decoration: none;
+}
+
+.header-imagen-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 150px;
+}
+
+.detalles-imagen-movil {
+    max-height: 145px;
+    max-width: 130px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+    border-radius: 6px;
+}
+
+.sin-imagen-texto {
+    color: #64748b;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.header-radar-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+}
+
+.header-diagrama-caja {
+    margin: 0;
+    width: 190px;
+    height: 140px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.contenedor-canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.valoracion-texto {
+    color: #ffffff;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.tarjeta-variantes {
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    background: #ffffff;
+}
+
+.tarjeta-variantes h3 {
+    margin-top: 0;
+    font-size: 1rem;
+    color: #3264b3;
+}
+
+.variantes-tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.tag-variante {
+    background: #e4ebf7;
+    color: #3264b3;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    font-weight: 600;
+    border: 1px solid #cbd5e1;
+}
+
+.comparar-variantes-btn-wrapper {
+    margin-top: 12px;
+}
+
+.btn-cargar-comparador {
+    background: #3264b3;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sin-variantes-texto {
+    margin: 8px 0 0 0;
+    font-size: 0.9rem;
+    color: #64748b;
+    font-style: italic;
+}
+
+.grid-detalles-completo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.lista-specs-detallada {
+    list-style: none;
+    padding: 0;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.lista-specs-detallada li {
+    border-bottom: 1px dashed #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.95rem;
+}
+
+.mt-20 {
+    margin-top: 20px;
+}
+
+.cams-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.cam-module-card {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.cam-module-card h3 {
+    margin-top: 0;
+    color: #3264b3;
+    font-size: 1.1rem;
+}
+
+.cam-module-card p {
+    margin: 5px 0;
+}
+
+.cam-divider {
+    border: 0;
+    border-top: 1px solid #cbd5e1;
+    margin: 10px 0;
+}
+
+.cam-spec-text {
+    font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   6. COMPARADOR AVANZADO (COMPARAR.PHP)
+   ========================================================================== */
+.selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgb(20 35 60 / 4%);
+    border: 1px solid #e0e5ed;
+}
+
+.selector-slot label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #596579;
+    margin-bottom: 5px;
+}
+
+.selector-slot input[type="text"] {
+    width: 100%;
+    padding: 6px 8px;
+    margin-bottom: 5px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.85rem;
+    background: #ffffff;
+}
+
+.selector-slot select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    font-size: 0.9rem;
+}
+
+.comparar-acciones-row {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.btn-accion {
+    display: inline-block;
+    background: #3264b3;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-accion:hover {
+    background: #254b8a;
+}
+
+.enlace-limpiar-comparacion {
+    margin-left: 15px;
+    color: #596579;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.tabla-comparativa-wrapper {
+    overflow-x: auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgb(20 35 60 / 4%);
+    border: 1px solid #e0e5ed;
+    margin-top: 20px;
+    margin-bottom: 40px;
+}
+
+.tabla-comparativa {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.tabla-comparativa th, 
+.tabla-comparativa td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.tabla-comparativa th {
+    background: #18263b;
+    color: white;
+    text-align: center;
+}
+
+.tabla-comparativa th:first-child, 
+.tabla-comparativa td:first-child {
+    background: #f1f5f9;
+    color: #1e293b;
+    font-weight: bold;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    border-right: 2px solid #cbd5e1;
+}
+
+.tabla-comparativa td {
+    text-align: center;
+}
+
+.th-year {
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    margin-bottom: 2px;
+}
+
+.th-title {
+    font-size: 0.95rem;
+    font-weight: bold;
+    margin: 2px 0;
+}
+
+.th-ficha-link {
+    font-size: 0.7rem;
+    color: #a9c5ff;
+    text-decoration: underline;
+}
+
+.fila-diferente {
+    background-color: #fffbeb !important;
+}
+
+.comparar-img-celda {
+    max-height: 50px;
+    max-width: 40px;
+    object-fit: contain;
+}
+
+.sin-dato-texto {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.comparar-vacio-box {
+    text-align: center;
+    padding: 40px;
+}
+
+.comparar-vacio-box h3 {
+    margin-top: 0;
+    color: #596579;
+}
+
+.comparar-vacio-box p {
+    color: #64748b;
+    margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   7. PIE DE PÁGINA GLOBAL
+   ========================================================================== */
+.pie {
+    padding: 20px 0;
+    background: #e8edf4;
+    color: #596579;
+    font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE DESIGN PARA MÓVILES
+   ========================================================================== */
+@media (max-width: 850px) {
+    .header-detalles-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .header-radar-wrapper {
+        align-items: center;
+        text-align: center;
+    }
+
+    .header-imagen-wrapper {
+        height: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .cabecera {
+        padding: 36px 0;
+    }
+
+    .encabezado-catalogo {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+/* ==========================================================================
+   7. ADICIONES PARA INDEX.PHP (panel admin, buscador y listado de móviles)
+   Van al final del archivo para poder completar/sobrescribir lo anterior.
+   ========================================================================== */
+.sobrelinea span {
+    margin-left: 18px;
+}
+
+.oculto {
+    display: none;
+}
+
+/* Botones de función del panel admin: el modo activo se ve en color, el resto en gris */
+.btn-admin-modo:not(.activo) {
+    background: #95a5a6;
+}
+
+/* Modo borrado: formulario bloqueado y en tonos rojos (solo para verificar) */
+.admin-fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
+.modo-borrado .categoria-filtro {
+    background: #fde8e8;
+    border-color: #f8b4b4;
+}
+
+.modo-borrado .categoria-filtro summary {
+    color: #9b2c2c;
+}
+
+.modo-borrado .admin-fieldset:disabled input,
+.modo-borrado .admin-fieldset:disabled select,
+.modo-borrado .admin-fieldset:disabled textarea {
+    background-color: #fff5f5;
+    color: #7f1d1d;
+    border-color: #f56565;
+}
+
+.aviso-editar-instruccion {
+    text-align: center;
+    color: #e67e22;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.subtitulo-admin {
+    margin: 18px 0 8px;
+    font-size: 1rem;
+    color: #1e293b;
+}
+
+.storage-counter-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.storage-counter-row label {
+    margin: 0;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+/* Vídeo de cada cámara (normal / LOG / OpenGate / OpenGate + LOG) */
+.cam-video-bloque {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #cbd5e1;
+}
+
+.cam-video-fila {
+    display: grid;
+    grid-template-columns: 170px 1fr 120px;
+    gap: 10px;
+    align-items: center;
+}
+
+.cam-video-fila .checkbox-label {
+    margin-bottom: 0;
+}
+
+.cam-video-titulo {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+/* Buscador avanzado */
+.busqueda-avanzada-box {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #e0e5ed;
+    margin-top: 25px;
+}
+
+.busqueda-avanzada-box h2 {
+    margin-top: 0;
+}
+
+.busqueda-nombre {
+    margin-bottom: 20px;
+}
+
+.fila-rango {
+    display: flex;
+    gap: 6px;
+}
+
+.fila-rango input {
+    min-width: 0;
+}
+
+/* Tarjetas del listado: foto, nota y precio */
+.tarjeta .anio::after {
+    content: "";
+    display: block;
+    clear: both;
+}
+
+.card-imagen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 150px;
+    margin-bottom: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card-imagen img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.card-pie {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e0e5ed;
+    font-size: 0.9rem;
+}
+
+.card-nota {
+    background: #18263b;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.card-nota:empty {
+    display: none;
+}
+
+.card-precio {
+    color: #596579;
+    font-weight: 600;
 }
 
 .estado-vacio {
@@ -119,170 +1108,8 @@ body {
     margin-top: 0;
 }
 
-.pie {
-    padding: 20px 0;
-    background: #e8edf4;
-    color: #596579;
-    font-size: 0.9rem;
-}
-
 @media (max-width: 600px) {
-    .cabecera {
-        padding: 36px 0;
-    }
-
-    .encabezado-catalogo {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-}
-
-.lista-specs {
-    list-style: none;
-    padding: 0;
-    line-height: 2.2;
-}
-
-/* Tooltips de ayuda "?" */
-.desglose-ayudas h3 {
-    font-size: 1rem;
-    color: #596579;
-    border-bottom: 1px solid #eceff1;
-    padding-bottom: 8px;
-    margin-bottom: 12px;
-}
-
-.lista-ayudas {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.lista-ayudas li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 0;
-    font-size: 0.95rem;
-    border-bottom: 1px dashed #f0f2f5;
-}
-
-.tooltip {
-    position: relative;
-    display: inline-block;
-    background: #e4ebf7;
-    color: #3264b3;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: bold;
-    line-height: 20px;
-    cursor: help;
-}
-
-.tooltip .tooltiptext {
-    visibility: hidden;
-    width: 260px;
-    background-color: #1e2530;
-    color: #fff;
-    text-align: left;
-    border-radius: 6px;
-    padding: 10px;
-    position: absolute;
-    z-index: 100;
-    bottom: 125%;
-    right: 0;
-    margin-left: -60px;
-    opacity: 0;
-    transition: opacity 0.2s;
-    font-size: 0.85rem;
-    line-height: 1.4;
-    font-family: sans-serif;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-}
-
-.tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
-}
-
-/* =====================================================
-   IMPLEMENTACIÓN DEL FLEXBOX DISTRIBUIDO EN EL HEADER
-   ===================================================== */
-.contenedor-header-split {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 40px;
-}
-
-.header-info-izquierda {
-    flex: 1;
-}
-
-/* El contenedor agrupador del bloque derecho */
-.header-bloque-derecho {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    flex-shrink: 0;
-}
-
-.header-valoracion-texto {
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    color: #a9c5ff;
-    white-space: nowrap;
-}
-
-.nota-resaltada {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #ffffff;
-    margin-left: 5px;
-    vertical-align: middle;
-}
-
-/* Caja contenedora para fijar el tamaño del Hexágono */
-.header-diagrama-caja {
-    width: 210px;
-    height: 170px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.contenedor-canvas {
-    position: relative;
-    width: 100%;
-    height: 100%;
-}
-
-.espacio-cuerpo {
-    margin-top: 35px !important;
-    margin-bottom: 50px !important;
-}
-
-.grid-detalles-nuevo {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-@media (max-width: 850px) {
-    .contenedor-header-split {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 25px;
-    }
-    .header-bloque-derecho {
-        width: 100%;
-        justify-content: space-between;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding-top: 15px;
+    .cam-video-fila {
+        grid-template-columns: 1fr;
     }
 }
