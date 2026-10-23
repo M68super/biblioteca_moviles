@@ -126,6 +126,26 @@ function v($seccion, $campo, $defecto = '') {
     return ($x === null || $x === '') ? escapar($defecto) : escapar($x);
 }
 
+// Igual que v(), pero limpiando los ceros de un DECIMAL ("8.50" -> "8.5"). Solo para columnas numéricas.
+function vn($seccion, $campo, $defecto = '') {
+    global $ficha;
+    $x = (isset($ficha[$seccion]) && is_array($ficha[$seccion])) ? ($ficha[$seccion][$campo] ?? null) : null;
+    return ($x === null || $x === '') ? escapar($defecto) : escapar(num_limpio($x));
+}
+
+// ¿Tiene phone_metadata las 6 notas (score_1..score_6) y el comentario personal?
+// Son las columnas que dibujan el hexágono de detalles.php. Se crean con migracion_notas.sql.
+function bd_tiene_notas(PDO $conexion) {
+    static $resultado = null;
+    if ($resultado === null) {
+        $q = $conexion->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'phone_metadata'
+              AND COLUMN_NAME IN ('score_1','score_2','score_3','score_4','score_5','score_6','personal_comment')");
+        $resultado = ((int)$q->fetchColumn() === 7);
+    }
+    return $resultado;
+}
+
 // Convierte una fila de camera_modules en el formato que usa el formulario (JS)
 function camaraParaForm(array $c) {
     list($vres, $vfps) = partir_video($c['normal_video_max'] ?? '');
@@ -386,7 +406,25 @@ function guardarMovil(PDO $conexion, $phone_id, array $p) {
     ]);
 
     // --- Metadatos: dimensiones, IP, materiales, nota, imagen y precios regionales ---
+    // Nota media: si la base de datos tiene las 6 notas, se calcula sola (suma / 6).
+    // Si aún no se ha ejecutado migracion_notas.sql, se usa la nota media escrita a mano.
+    $con_notas = bd_tiene_notas($conexion);
+    $notas_individuales = [];
     $score_avg = dec_o_null($p['score_avg'] ?? '');
+    if ($con_notas) {
+        $suma_notas = 0;
+        $hay_nota = false;
+        for ($i = 1; $i <= 6; $i++) {
+            $n = dec_o_null($p['score_' . $i] ?? '');
+            if ($n !== null) {
+                $n = max(0, min(10, round($n, 2)));
+                $suma_notas += $n;
+                $hay_nota = true;
+            }
+            $notas_individuales['score_' . $i] = $n;
+        }
+        $score_avg = $hay_nota ? round($suma_notas / 6, 2) : null;
+    }
     if ($score_avg !== null) $score_avg = max(0, min(10, round($score_avg, 2)));
 
     $datos_meta = [
@@ -400,6 +438,10 @@ function guardarMovil(PDO $conexion, $phone_id, array $p) {
         'thickness_mm'   => dec_o_null($p['thickness_mm'] ?? ''),
         'weight_g'       => int_o_null($p['weight_g'] ?? ''),
     ];
+    if ($con_notas) {
+        $datos_meta = array_merge($datos_meta, $notas_individuales);
+        $datos_meta['personal_comment'] = texto_o_null($p['personal_comment'] ?? '');
+    }
     foreach (regiones_precio() as $info) {
         $datos_meta[$info['col']] = dec_o_null($p[$info['col']] ?? '');
     }
@@ -516,6 +558,7 @@ function borrarMovil(PDO $conexion, $phone_id) {
 $sesion_iniciada = isset($_SESSION['user_id']);
 $nombre_usuario  = $sesion_iniciada ? (string)($_SESSION['username'] ?? '') : '';
 $es_admin        = $sesion_iniciada && !empty($_SESSION['is_admin']);
+$bd_tiene_notas  = bd_tiene_notas($conexion);
 
 $mensaje_exito = '';
 $mensaje_error = '';
@@ -1118,18 +1161,44 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
                             </div>
                         </details>
 
-                        <!-- Sección 11: Valoración e imagen -->
+                        <!-- Sección 11: Valoración personal (6 puntos del hexágono), comentario y foto -->
                         <details class="categoria-filtro">
-                            <summary>11. Valoración y Foto</summary>
+                            <summary>11. Valoración Personal (6 Puntos) y Comentarios</summary>
                             <div class="categoria-contenido">
-                                <div>
-                                    <label>Nota Media (0 - 10):</label>
-                                    <input type="number" step="0.01" min="0" max="10" name="score_avg" value="<?= v('meta', 'score_avg') ?>" placeholder="Ej: 8.5">
-                                </div>
+                                <?php if ($bd_tiene_notas): ?>
+                                    <p class="full-width ayuda-notas">Estos 6 valores son los que dibuja el hexágono de la ficha del móvil. La nota media se calcula sola.</p>
+                                    <?php
+                                    $criterios_nota = [1 => 'Diseño', 2 => 'Pantalla', 3 => 'Rendimiento', 4 => 'Cámaras', 5 => 'Batería', 6 => 'Software'];
+                                    foreach ($criterios_nota as $num_nota => $nombre_nota): ?>
+                                        <div>
+                                            <label>Punto <?= $num_nota ?> (<?= $nombre_nota ?>):</label>
+                                            <input type="number" step="0.01" min="0" max="10" name="score_<?= $num_nota ?>" id="score_<?= $num_nota ?>" oninput="calcularMedia()" value="<?= vn('meta', 'score_' . $num_nota) ?>" placeholder="0 - 10">
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <div>
+                                        <label>Nota Media (automática):</label>
+                                        <input type="number" step="0.01" id="score_avg" class="campo-calculado" readonly value="<?= vn('meta', 'score_avg') ?>" placeholder="Se calcula sola">
+                                    </div>
+                                <?php else: ?>
+                                    <div class="full-width alerta-error">
+                                        Faltan las columnas de las 6 notas y del comentario personal en la tabla <code>phone_metadata</code>.
+                                        Ejecuta <code>migracion_notas.sql</code> en phpMyAdmin para activarlas. Mientras tanto puedes escribir la nota media a mano.
+                                    </div>
+                                    <div>
+                                        <label>Nota Media (0 - 10):</label>
+                                        <input type="number" step="0.01" min="0" max="10" name="score_avg" value="<?= vn('meta', 'score_avg') ?>" placeholder="Ej: 8.5">
+                                    </div>
+                                <?php endif; ?>
                                 <div class="full-width">
                                     <label>Enlace de la foto (URL):</label>
                                     <input type="text" name="image_url" value="<?= v('meta', 'image_url') ?>" placeholder="https://ejemplo.com/imagen.jpg">
                                 </div>
+                                <?php if ($bd_tiene_notas): ?>
+                                    <div class="full-width">
+                                        <label>Comentario personal:</label>
+                                        <textarea name="personal_comment" rows="4" placeholder="Tus impresiones y conclusiones sobre el terminal..."><?= v('meta', 'personal_comment') ?></textarea>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </details>
 
@@ -1634,9 +1703,26 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
             }
         }
 
+        /**
+         * NOTA MEDIA AUTOMÁTICA: suma de los 6 puntos entre 6 (igual que al guardar en el servidor)
+         */
+        function calcularMedia() {
+            let suma = 0;
+            let hayNota = false;
+            for (let i = 1; i <= 6; i++) {
+                const campo = document.getElementById('score_' + i);
+                if (!campo) return;
+                const n = parseFloat(campo.value);
+                if (!isNaN(n)) { suma += n; hayNota = true; }
+            }
+            const salida = document.getElementById('score_avg');
+            if (salida) salida.value = hayNota ? (Math.round(suma / 6 * 100) / 100).toFixed(2).replace(/\.?0+$/, '') : '';
+        }
+
         window.addEventListener('DOMContentLoaded', function () {
             generarVersionesMemoria();
             pintarCamaras();
+            calcularMedia();
         });
     </script>
     <?php endif; ?>

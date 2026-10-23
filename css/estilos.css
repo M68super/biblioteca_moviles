@@ -1113,3 +1113,16 @@ textarea {
         grid-template-columns: 1fr;
     }
 }
+
+/* Valoración personal (punto 11 del panel admin) */
+.campo-calculado {
+    background: #eef2f7;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.ayuda-notas {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #596579;
+}
