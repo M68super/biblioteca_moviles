@@ -1,0 +1,419 @@
+/* ==========================================================================
+   ADMIN.CSS · Panel de administración (admin.php) y página de conversión de memoria (migrar_memoria.php).
+   ========================================================================== */
+
+.admin-box {
+    background: #fffdfd;
+    border: 2px dashed #e74c3c;
+    padding: 25px;
+    border-radius: 12px;
+    margin-top: 25px;
+}
+
+.admin-box.modo-borrado {
+    border: 2px dashed #c0392b;
+    background: #fff5f5;
+}
+
+.admin-modes-bar {
+    margin-bottom: 20px;
+}
+
+.btn-admin-modo {
+    display: inline-block;
+    padding: 8px 16px;
+    margin-right: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.btn-crear { background: #27ae60; color: white; }
+
+.btn-editar { background: #e67e22; color: white; }
+
+.btn-borrar-modo { background: #c0392b; color: white; }
+
+.admin-selector-box {
+    background: #fdfefe;
+    border: 1px solid #d5dbdb;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.modo-borrado-box {
+    background: #fde8e8 !important;
+    border-color: #f56565 !important;
+}
+
+.admin-selector-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.admin-selector-row select {
+    flex: 2;
+}
+
+.btn-cargar, .btn-cargar-borrar {
+    flex: 1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.btn-cargar { background: #e67e22; }
+
+.btn-cargar-borrar { background: #c0392b; }
+
+.storage-block-container input[type="number"] {
+    width: 120px;
+}
+
+.storage-version-row {
+    position: relative;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    padding: 40px 12px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.cam-main-box {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.cam-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.aux-camara-box {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+.aux-title {
+    margin-top: 0;
+    color: #1e293b;
+}
+
+.btn-eliminar-aux {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-add-aux {
+    background: #3264b3;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
+
+.dim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.dim-subgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.precios-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.price-input-box {
+    margin-top: 5px;
+    margin-left: 20px;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+.btn-submit-success, .btn-submit-edit, .btn-submit-danger {
+    width: 100%;
+    margin-top: 15px;
+    padding: 12px;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-submit-success { background: #27ae60; }
+
+.btn-submit-edit { background: #e67e22; }
+
+.btn-submit-danger { background: #c0392b; }
+
+.aviso-borrar-instruccion {
+    text-align: center;
+    color: #c0392b;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.oculto {
+    display: none;
+}
+
+/* Botones de función del panel admin: el modo activo se ve en color, el resto en gris */
+.btn-admin-modo:not(.activo) {
+    background: #95a5a6;
+}
+
+/* Modo borrado: formulario bloqueado y en tonos rojos (solo para verificar) */
+.admin-fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
+.modo-borrado .categoria-filtro {
+    background: #fde8e8;
+    border-color: #f8b4b4;
+}
+
+.modo-borrado .categoria-filtro summary {
+    color: #9b2c2c;
+}
+
+.modo-borrado .admin-fieldset:disabled input,
+.modo-borrado .admin-fieldset:disabled select,
+.modo-borrado .admin-fieldset:disabled textarea {
+    background-color: #fff5f5;
+    color: #7f1d1d;
+    border-color: #f56565;
+}
+
+.aviso-editar-instruccion {
+    text-align: center;
+    color: #e67e22;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.subtitulo-admin {
+    margin: 18px 0 8px;
+    font-size: 1rem;
+    color: #1e293b;
+}
+
+/* Vídeo de cada cámara (normal / LOG / OpenGate / OpenGate + LOG) */
+.cam-video-bloque {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #cbd5e1;
+}
+
+.cam-video-fila {
+    display: grid;
+    grid-template-columns: 170px 1fr 120px;
+    gap: 10px;
+    align-items: center;
+}
+
+.cam-video-fila .checkbox-label {
+    margin-bottom: 0;
+}
+
+.cam-video-titulo {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+@media (max-width: 600px) {
+    .cam-video-fila {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Valoración personal (punto 11 del panel admin) */
+.campo-calculado {
+    background: #eef2f7;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.ayuda-notas {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #596579;
+}
+
+/* Vídeo con dos opciones de resolución + fps por cada tipo */
+.cam-video-fila.con-opcion2 {
+    grid-template-columns: 170px 1fr 80px 1fr 80px;
+}
+
+@media (max-width: 600px) {
+    .cam-video-fila.con-opcion2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Precio con operadora: campos a todo el ancho, uno encima de otro */
+.operadora-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.operadora-grid textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+
+/* --- Versiones de memoria: campos y precios de cada versión --- */
+.storage-version-campos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.storage-version-row input[type="number"] {
+    width: 100%;
+}
+
+.precios-version {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed #cbd5e1;
+}
+
+.precios-version summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #334155;
+}
+
+.precios-version-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* --- Variantes regionales: selector con búsqueda y etiquetas de los móviles asociados --- */
+.variantes-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.variantes-selector input[type="text"] {
+    flex: 1 1 200px;
+    width: auto;
+}
+
+.variantes-selector select {
+    flex: 2 1 260px;
+    width: auto;
+}
+
+.tag-variante-editable {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-quitar-variante {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+/* --- Foto del móvil --- */
+.admin-imagen-actual {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+    margin: 8px 0 12px;
+}
+
+.admin-preview-imagen {
+    max-width: 160px;
+    max-height: 160px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+/* --- Tabla de migrar_memoria.php --- */
+.tabla-wrapper {
+    overflow-x: auto;
+    margin: 15px 0;
+}
+
+.tabla-simple {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabla-simple th,
+.tabla-simple td {
+    padding: 8px 10px;
+    border: 1px solid #e0e5ed;
+    text-align: left;
+    vertical-align: top;
+}
+
+.tabla-simple th {
+    background: #eef2f7;
+}

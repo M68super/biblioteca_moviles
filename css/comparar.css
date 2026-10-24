@@ -1,0 +1,170 @@
+/* ==========================================================================
+   COMPARAR.CSS · Comparador de smartphones (comparar.php).
+   ========================================================================== */
+
+.selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgb(20 35 60 / 4%);
+    border: 1px solid #e0e5ed;
+}
+
+.selector-slot label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #596579;
+    margin-bottom: 5px;
+}
+
+.selector-slot input[type="text"] {
+    width: 100%;
+    padding: 6px 8px;
+    margin-bottom: 5px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.85rem;
+    background: #ffffff;
+}
+
+.selector-slot select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    font-size: 0.9rem;
+}
+
+.comparar-acciones-row {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.btn-accion {
+    display: inline-block;
+    background: #3264b3;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-accion:hover {
+    background: #254b8a;
+}
+
+.enlace-limpiar-comparacion {
+    margin-left: 15px;
+    color: #596579;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.tabla-comparativa-wrapper {
+    overflow-x: auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgb(20 35 60 / 4%);
+    border: 1px solid #e0e5ed;
+    margin-top: 20px;
+    margin-bottom: 40px;
+}
+
+.tabla-comparativa {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.tabla-comparativa th, 
+.tabla-comparativa td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.tabla-comparativa th {
+    background: #18263b;
+    color: white;
+    text-align: center;
+}
+
+.tabla-comparativa th:first-child, 
+.tabla-comparativa td:first-child {
+    background: #f1f5f9;
+    color: #1e293b;
+    font-weight: bold;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    border-right: 2px solid #cbd5e1;
+}
+
+.tabla-comparativa td {
+    text-align: center;
+}
+
+.th-year {
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    margin-bottom: 2px;
+}
+
+.th-title {
+    font-size: 0.95rem;
+    font-weight: bold;
+    margin: 2px 0;
+}
+
+.th-ficha-link {
+    font-size: 0.7rem;
+    color: #a9c5ff;
+    text-decoration: underline;
+}
+
+.fila-diferente {
+    background-color: #fffbeb !important;
+}
+
+.comparar-img-celda {
+    max-height: 50px;
+    max-width: 40px;
+    object-fit: contain;
+}
+
+.sin-dato-texto {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.comparar-vacio-box {
+    text-align: center;
+    padding: 40px;
+}
+
+.comparar-vacio-box h3 {
+    margin-top: 0;
+    color: #596579;
+}
+
+.comparar-vacio-box p {
+    color: #64748b;
+    margin-bottom: 20px;
+}

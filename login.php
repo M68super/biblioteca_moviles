@@ -1,129 +1,98 @@
 <?php
+/**
+ * ============================================================================
+ * LOGIN.PHP · INICIO DE SESIÓN
+ * Usuario + contraseña (se comparan con el hash guardado en la tabla users).
+ * ============================================================================
+ */
 require_once __DIR__ . '/config/conexion.php';
+require_once __DIR__ . '/includes/funciones.php';
 
 // Si ya hay sesión iniciada, redirigir al inicio
-if (isset($_SESSION['user_id'])) {
+if (usuario_logueado()) {
     header('Location: index.php');
     exit;
 }
 
 $error = '';
+$usuario_escrito = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $identifier = trim($_POST['identifier'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    $usuario_escrito = trim((string)($_POST['username'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
 
-    if (empty($identifier)) {
-        $error = 'Por favor, introduce tu nombre de usuario o correo.';
+    if (!csrf_valido()) {
+        $error = 'El formulario ha caducado. Recarga la página e inténtalo de nuevo.';
+    } elseif ($usuario_escrito === '' || $password === '') {
+        $error = 'Introduce tu nombre de usuario y tu contraseña.';
     } else {
         try {
-            $stmt = $conexion->prepare("SELECT * FROM users WHERE username = ? OR email = ?");
-            $stmt->execute([$identifier, $identifier]);
+            $stmt = $conexion->prepare("SELECT id, username, password, is_admin FROM users WHERE username = ? LIMIT 1");
+            $stmt->execute([$usuario_escrito]);
             $user = $stmt->fetch();
 
-            // Acceso directo y blindado para el Administrador de prueba
-            if ($identifier === 'admin' && ($password === 'admin' || (isset($user['password']) && password_verify($password, $user['password'])))) {
-                $_SESSION['user_id'] = $user ? $user['id'] : 1;
-                $_SESSION['username'] = 'admin';
-                $_SESSION['email'] = $user ? $user['email'] : 'admin@biblioteca.local';
-                $_SESSION['is_admin'] = 1;
+            if ($user && password_verify($password, (string)$user['password'])) {
+                // Sesión nueva (evita que alguien reutilice un identificador de sesión anterior)
+                session_regenerate_id(true);
+                unset($_SESSION['csrf_token'], $_SESSION['esquema_ok_hasta']);
+
+                $_SESSION['user_id']  = (int)$user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['is_admin'] = ((int)$user['is_admin'] === 1) ? 1 : 0;
+
+                // Si PHP ha mejorado el algoritmo de hash, se actualiza el guardado
+                if (password_needs_rehash($user['password'], PASSWORD_DEFAULT)) {
+                    $conexion->prepare("UPDATE users SET password = ? WHERE id = ?")
+                             ->execute([password_hash($password, PASSWORD_DEFAULT), $user['id']]);
+                }
 
                 header('Location: index.php');
                 exit;
             }
 
-            if ($user) {
-                $es_admin_bd = ((int)$user['is_admin'] === 1 || $user['username'] === 'admin');
-
-                if ($es_admin_bd) {
-                    if (empty($password) || (!password_verify($password, $user['password']) && $password !== 'admin')) {
-                        $error = 'Contraseña de administrador incorrecta.';
-                    } else {
-                        $_SESSION['user_id'] = $user['id'];
-                        $_SESSION['username'] = $user['username'];
-                        $_SESSION['email'] = $user['email'];
-                        $_SESSION['is_admin'] = 1;
-                        header('Location: index.php');
-                        exit;
-                    }
-                } else {
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['username'] = $user['username'];
-                    $_SESSION['email'] = $user['email'];
-                    $_SESSION['is_admin'] = 0;
-                    header('Location: index.php');
-                    exit;
-                }
-            } else {
-                $error = 'Usuario o correo no encontrado. Regístrate primero.';
-            }
+            // Mismo mensaje si falla el usuario o la contraseña (no se revela cuál) y una pequeña espera
+            usleep(400000);
+            $error = 'Usuario o contraseña incorrectos.';
         } catch (PDOException $e) {
-            $error = 'Error al iniciar sesión: ' . $e->getMessage();
+            error_log('Error de login: ' . $e->getMessage());
+            $error = 'No se ha podido iniciar sesión. Inténtalo de nuevo más tarde.';
         }
     }
 }
+
+// Datos de la cabecera común
+$pagina_actual    = 'login';
+$pagina_titulo    = 'Iniciar Sesión | Biblioteca de Móviles';
+$pagina_h1        = 'Iniciar Sesión';
+$pagina_subtitulo = 'Accede con tu usuario y contraseña';
+$pagina_css       = ['auth'];
+
+require __DIR__ . '/includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión | Biblioteca de Móviles</title>
-    <link rel="stylesheet" href="css/estilos.css">
-</head>
-<body>
-    <header class="cabecera">
-        <div class="contenedor">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <p class="sobrelinea" style="margin: 0;"><a href="index.php" style="color: #a9c5ff; text-decoration: none;">&larr; VOLVER AL CATÁLOGO</a></p>
-                <div>
-                    <?php if (isset($_SESSION['username'])): ?>
-                        <span style="color: #a9c5ff; font-size: 0.85rem;">
-                            <?= htmlspecialchars($_SESSION['username']) ?>
-                            <?php if (!empty($_SESSION['is_admin'])): ?> <span style="background: #e74c3c; color: white; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem;">ADMIN</span> <?php endif; ?>
-                        </span>
-                        <a href="logout.php" style="color: #fff; text-decoration: none; font-size: 0.8rem; margin-left: 10px;">Cerrar sesión</a>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <h1>Iniciar Sesión</h1>
-            <p class="subtitulo">Acceso de usuarios y administradores</p>
-        </div>
-    </header>
 
     <main class="contenedor espacio-cuerpo">
-        <div class="tarjeta" style="max-width: 450px; margin: 0 auto; padding: 30px;">
-            <?php if (!empty($error)): ?>
-                <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
-                    <?= htmlspecialchars($error) ?>
-                </div>
+        <div class="tarjeta auth-card">
+            <?php if ($error !== ''): ?>
+                <div class="alerta-error"><?= escapar($error) ?></div>
             <?php endif; ?>
 
             <form action="login.php" method="POST">
-                <div style="margin-bottom: 15px;">
-                    <label for="identifier" style="display: block; margin-bottom: 6px; font-weight: 600;">Nombre de usuario o Correo:</label>
-                    <input type="text" id="identifier" name="identifier" required placeholder="Ej: admin o tu usuario" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                <?= csrf_campo() ?>
+                <div class="campo-auth">
+                    <label for="username">Nombre de usuario:</label>
+                    <input type="text" id="username" name="username" required autocomplete="username" value="<?= escapar($usuario_escrito) ?>">
                 </div>
-                <div style="margin-bottom: 20px;">
-                    <label for="password" style="display: block; margin-bottom: 6px; font-weight: 600;">Contraseña <span style="font-size: 0.8rem; font-weight: normal; color: #666;">(Solo Admin)</span>:</label>
-                    <input type="password" id="password" name="password" placeholder="Solo si eres admin" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                <div class="campo-auth">
+                    <label for="password">Contraseña:</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
                 </div>
-                <button type="submit" style="width: 100%; padding: 12px; background: #18263b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Entrar</button>
+                <button type="submit" class="btn-auth">Entrar</button>
             </form>
 
-            <p style="text-align: center; margin-top: 20px; font-size: 0.9rem;">
-                ¿No tienes cuenta? <a href="register.php" style="color: #3264b3;">Regístrate aquí</a>
+            <p class="auth-enlace">
+                ¿No tienes cuenta? <a href="register.php">Regístrate aquí</a>
             </p>
-            <div style="margin-top: 20px; padding: 10px; background: #e8edf4; border-radius: 6px; font-size: 0.85rem; color: #596579;">
-                <strong>Admin de prueba:</strong> Usuario: <code>admin</code> | Contraseña: <code>admin</code>
-            </div>
         </div>
     </main>
 
-    <footer class="pie">
-        <div class="contenedor">
-            <p>Catálogo de smartphones · Proyecto personal estilo Kimovil</p>
-        </div>
-    </footer>
-</body>
-</html>
+<?php require __DIR__ . '/includes/footer.php'; ?>

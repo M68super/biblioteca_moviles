@@ -2,42 +2,27 @@
 /**
  * ============================================================================
  * DETALLES.PHP · FICHA TÉCNICA COMPLETA DE UN MÓVIL
- * Adaptado a la estructura de base de datos: estructura_2026-10-20.sql
  * ============================================================================
- *  FASE 1: Configuración, sesión y funciones auxiliares
+ *  FASE 1: Configuración y funciones de presentación
  *  FASE 2: Consultas y carga de datos técnicos del terminal
- *  FASE 3: Maquetación de la ficha
+ *  FASE 3: Maquetación de la ficha (cabecera común en includes/header.php)
  *  FASE 4: Script del gráfico radar (solo si hay notas por criterio)
  * ============================================================================
  */
 require_once __DIR__ . '/config/conexion.php';
-
-$sesion_iniciada = isset($_SESSION['user_id']);
-$nombre_usuario = $sesion_iniciada ? (string)($_SESSION['username'] ?? '') : '';
-$es_admin = $sesion_iniciada && !empty($_SESSION['is_admin']);
+require_once __DIR__ . '/includes/funciones.php';
+exigir_esquema($conexion);
 
 // Capturar y validar el ID del móvil por GET
 $id_movil = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id_movil <= 0) {
     die('Móvil no válido o no especificado.');
 }
+$es_admin = es_admin();
 
 /**
- * Funciones auxiliares de presentación
+ * Funciones de presentación de esta página
  */
-
-// Función de escape de seguridad para textos
-function escapar($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
-
-// Quita ceros sobrantes de un DECIMAL de MySQL: "6.70" -> "6.7", "50.00" -> "50"
-function num_limpio($v) {
-    if ($v === null || $v === '') return '';
-    $s = (string)$v;
-    if (strpos($s, '.') !== false) {
-        $s = rtrim(rtrim($s, '0'), '.');
-    }
-    return $s;
-}
 
 // Texto o "N/D" si el dato no existe (se escapa solo)
 function mostrar($v, $sufijo = '') {
@@ -74,7 +59,7 @@ function formato_video($tiene, $resolucion, $fps, $resolucion2 = '', $fps2 = '')
     return $opciones ? escapar(implode(' / ', $opciones)) : 'Sí';
 }
 
-// Regiones de precio (columnas de phone_metadata)
+// Regiones de precio: nombre en la ficha => [columna, símbolo]
 $regiones_precio = [
     'Global / España' => ['price_global', '€'],
     'Unión Europea'   => ['price_ue', '€'],
@@ -107,13 +92,13 @@ try {
         return $q->fetchAll();
     };
 
-    // 1. Datos base del móvil, marca, familia y sistema operativo (el SO pertenece a la marca)
+    // 1. Datos base del móvil, marca, familia y sistema operativo
     $movil = $una("
         SELECT p.*, b.name AS marca, s.name AS familia, os.name AS sistema_operativo
         FROM phones p
         INNER JOIN series s ON s.id = p.series_id
         INNER JOIN brands b ON b.id = s.brand_id
-        LEFT JOIN operative_systems os ON os.id = b.operative_system_id
+        LEFT JOIN operative_systems os ON os.id = p.operative_system_id
         WHERE p.id = ?
     ", $id_movil);
 
@@ -121,7 +106,7 @@ try {
         die('El teléfono solicitado no existe.');
     }
 
-    // 2. Metadata (dimensiones, IP, materiales, nota media, imagen y precios regionales)
+    // 2. Metadata (dimensiones, IP, materiales, notas, prioridad, imagen y precios regionales)
     $meta = $una("SELECT * FROM phone_metadata WHERE phone_id = ? ORDER BY id LIMIT 1", $id_movil);
 
     // 3. Software y soporte de actualizaciones
@@ -141,8 +126,8 @@ try {
         $bat  = $una("SELECT * FROM characteristics_battery WHERE phone_characteristic_id = ? ORDER BY id LIMIT 1", $char_id);
         $conn = $una("SELECT * FROM characteristics_connectivity WHERE phone_characteristic_id = ? ORDER BY id LIMIT 1", $char_id);
 
-        // Múltiples versiones de memoria RAM y almacenamiento
-        $storage_versions = $varias("SELECT * FROM characteristics_storage_versions WHERE phone_characteristic_id = ? ORDER BY id", $char_id);
+        // Versiones de memoria (de menor a mayor) con sus precios
+        $storage_versions = $varias("SELECT * FROM characteristics_storage_versions WHERE phone_characteristic_id = ? ORDER BY ram_gb, storage_gb, id", $char_id);
 
         // Módulos de cámaras ordenados (Principal primero)
         $cams = $varias("
@@ -152,25 +137,27 @@ try {
         ", $char_id);
     }
 
-    // 5. Otros modelos de la misma familia (para navegar y cargar en el comparador)
-    $stmt_familia = $conexion->prepare("
-        SELECT p.id, p.name, b.name AS marca
-        FROM phones p
-        INNER JOIN series s ON s.id = p.series_id
-        INNER JOIN brands b ON b.id = s.brand_id
-        WHERE p.series_id = ? AND p.id <> ?
-        ORDER BY p.launch_year DESC, p.name ASC
-        LIMIT 5
-    ");
-    $stmt_familia->execute([(int)$movil['series_id'], $id_movil]);
-    $familia_moviles = $stmt_familia->fetchAll();
+    // 5. Variantes regionales: móviles asociados a este desde el panel admin (mismo grupo)
+    $variantes = [];
+    if (!empty($movil['variant_group_id'])) {
+        $stmt_var = $conexion->prepare("
+            SELECT p.id, p.name, b.name AS marca
+            FROM phones p
+            INNER JOIN series s ON s.id = p.series_id
+            INNER JOIN brands b ON b.id = s.brand_id
+            WHERE p.variant_group_id = ? AND p.id <> ?
+            ORDER BY b.name, p.name
+        ");
+        $stmt_var->execute([(int)$movil['variant_group_id'], $id_movil]);
+        $variantes = $stmt_var->fetchAll();
+    }
 
+    // Enlace al comparador con este móvil y sus variantes (máximo 6)
     $ids_comparar = [$id_movil];
-    foreach ($familia_moviles as $fm) { $ids_comparar[] = (int)$fm['id']; }
-    $query_comparar = http_build_query(['ids' => $ids_comparar]);
+    foreach ($variantes as $vr) { $ids_comparar[] = (int)$vr['id']; }
+    $query_comparar = http_build_query(['ids' => array_slice($ids_comparar, 0, 6)]);
 
-    // 6. Valoración: la nota media está siempre en phone_metadata.score_avg.
-    //    El hexágono solo se dibuja si la base de datos tiene las 6 notas por criterio (score_1..score_6).
+    // 6. Valoración: la nota media está en phone_metadata.score_avg y el hexágono usa score_1..score_6
     $vals = [];
     $tiene_notas = false;
     for ($i = 1; $i <= 6; $i++) {
@@ -178,45 +165,32 @@ try {
         $vals[] = $nota;
         if ($nota > 0) $tiene_notas = true;
     }
-
     $score_avg = isset($meta['score_avg']) ? (float)$meta['score_avg'] : 0;
     $tiene_media = $score_avg > 0;
     $media = $tiene_media ? num_limpio($meta['score_avg']) : 'Sin nota';
 
+    // 7. Prioridad de compra (solo la ve el administrador)
+    $lista_prioridades = prioridades();
+    $clave_prioridad = (string)($meta['priority'] ?? 'ninguna');
+    if (!isset($lista_prioridades[$clave_prioridad])) $clave_prioridad = 'ninguna';
+
 } catch (PDOException $e) {
     die('Error al cargar la ficha técnica: ' . escapar($e->getMessage()));
 }
-?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= escapar($movil['name']) ?> | Ficha Técnica Completa</title>
-    <link rel="stylesheet" href="css/estilos.css">
-    <?php if ($tiene_notas): ?><script src="css/chart.js"></script><?php endif; ?>
-</head>
-<body>
 
-    <header class="cabecera">
-        <div class="contenedor">
-            <div class="header-top-bar">
-                <p class="sobrelinea">
-                    <a href="index.php" class="enlace-volver">&larr; VOLVER AL CATÁLOGO</a>
-                </p>
-                <div>
-                    <?php if ($sesion_iniciada): ?>
-                        <span class="usuario-logueado">Hola, <strong><?= escapar($nombre_usuario) ?></strong>
-                            <?php if ($es_admin): ?><span class="badge-admin">ADMIN</span><?php endif; ?>
-                        </span>
-                        <a href="logout.php" class="btn-sesion">Cerrar sesión</a>
-                    <?php else: ?>
-                        <a href="login.php" class="btn-sesion">Iniciar sesión</a>
-                        <a href="register.php" class="btn-sesion btn-registro">Registrarse</a>
-                    <?php endif; ?>
-                </div>
-            </div>
+/**
+ * ============================================================================
+ * FASE 3: CABECERA COMÚN Y MAQUETACIÓN
+ * ============================================================================
+ */
+$pagina_actual = 'detalles';
+$pagina_titulo = $movil['name'] . ' | Ficha Técnica Completa';
+$pagina_css    = ['detalles'];
 
+// Contenido propio de la cabecera de esta página: título, foto y valoración
+$imagen_movil = url_imagen($meta['image_url'] ?? '');
+$cabecera_personalizada = function () use ($movil, $imagen_movil, $tiene_notas, $media, $tiene_media) {
+    ?>
             <div class="header-detalles-grid">
                 <div>
                     <h1><?= escapar($movil['name']) ?></h1>
@@ -226,8 +200,8 @@ try {
                 </div>
 
                 <div class="header-imagen-wrapper">
-                    <?php if (!empty($meta['image_url'])): ?>
-                        <img src="<?= escapar($meta['image_url']) ?>" alt="Foto de <?= escapar($movil['name']) ?>" class="detalles-imagen-movil">
+                    <?php if ($imagen_movil !== ''): ?>
+                        <img src="<?= escapar($imagen_movil) ?>" alt="Foto de <?= escapar($movil['name']) ?>" class="detalles-imagen-movil">
                     <?php else: ?>
                         <span class="sin-imagen-texto">Sin imagen</span>
                     <?php endif; ?>
@@ -246,8 +220,43 @@ try {
                     </p>
                 </div>
             </div>
-        </div>
-    </header>
+    <?php
+};
+
+// Script del hexágono (se imprime en el pie, solo si hay notas por criterio)
+if ($tiene_notas) {
+    ob_start();
+    ?>
+    <script src="js/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('radarHexagono').getContext('2d');
+        const etiquetas = <?= json_encode(['Diseño', 'Pantalla', 'Rendimiento', 'Cámaras', 'Batería', 'Software'], JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+        const valores = <?= json_encode($vals) ?>;
+
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: etiquetas,
+                datasets: [{
+                    data: valores,
+                    backgroundColor: 'rgba(52, 152, 219, 0.15)',
+                    borderColor: 'rgba(255, 255, 255, 0.4)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                scales: {
+                    r: { min: 0, max: 10, ticks: { stepSize: 2, display: false } }
+                }
+            }
+        });
+    </script>
+    <?php
+    $pagina_scripts = ob_get_clean();
+}
+
+require __DIR__ . '/includes/header.php';
+?>
 
     <main class="contenedor espacio-cuerpo">
 
@@ -259,19 +268,19 @@ try {
             </section>
         <?php endif; ?>
 
-        <!-- Otros modelos de la familia y acceso al comparador -->
+        <!-- Variantes regionales y acceso al comparador -->
         <section class="tarjeta tarjeta-variantes">
-            <h3>📱 Otros modelos de la familia <?= escapar($movil['familia']) ?></h3>
-            <?php if (!empty($familia_moviles)): ?>
+            <h3>🌍 Variantes regionales y modelos equivalentes</h3>
+            <?php if (!empty($variantes)): ?>
                 <div class="variantes-tags-row">
-                    <?php foreach ($familia_moviles as $fm): ?>
-                        <a href="detalles.php?id=<?= (int)$fm['id'] ?>" class="tag-variante">
-                            <?= escapar($fm['marca'] . ' ' . $fm['name']) ?>
+                    <?php foreach ($variantes as $vr): ?>
+                        <a href="detalles.php?id=<?= (int)$vr['id'] ?>" class="tag-variante">
+                            <?= escapar($vr['marca'] . ' ' . $vr['name']) ?>
                         </a>
                     <?php endforeach; ?>
                 </div>
             <?php else: ?>
-                <p class="sin-variantes-texto">No hay más modelos registrados en esta familia.</p>
+                <p class="sin-variantes-texto">Este móvil no tiene variantes regionales registradas.</p>
             <?php endif; ?>
             <div class="comparar-variantes-btn-wrapper">
                 <a href="comparar.php?<?= escapar($query_comparar) ?>" class="btn-cargar-comparador">
@@ -321,19 +330,34 @@ try {
                 </ul>
             </section>
 
-            <!-- Memoria RAM y Almacenamiento -->
+            <!-- Memoria RAM y Almacenamiento (cada versión con sus precios) -->
             <section class="tarjeta">
                 <h2>💾 Memoria y Almacenamiento</h2>
                 <ul class="lista-specs-detallada">
                     <?php if (!empty($storage_versions)): ?>
                         <?php foreach ($storage_versions as $i => $sv): ?>
-                            <li>
+                            <?php
+                            // Si la versión aún no se ha convertido a números, se muestra el texto antiguo
+                            $ram_txt = $sv['ram_gb'] !== null ? (string)$sv['ram_gb'] : trim((string)($sv['ram_capacities_gb'] ?? ''));
+                            $sto_txt = $sv['storage_gb'] !== null ? (string)$sv['storage_gb'] : trim((string)($sv['storage_capacities_gb'] ?? ''));
+                            $precios_version = [];
+                            foreach ($regiones_precio as $nombre_region => $datos_region) {
+                                $p_ver = $sv[$datos_region[0]] ?? null;
+                                if ($p_ver !== null && (float)$p_ver > 0) {
+                                    $precios_version[] = escapar($nombre_region) . ': <strong>' . formato_precio($p_ver, $datos_region[1]) . '</strong>';
+                                }
+                            }
+                            ?>
+                            <li class="li-version">
                                 <span>Versión <?= $i + 1 ?>:</span>
                                 <strong>
-                                    <?= escapar($sv['ram_capacities_gb']) ?> GB<?= !empty($sv['ram_technology']) ? ' (' . escapar($sv['ram_technology']) . ')' : '' ?>
-                                    / <?= escapar($sv['storage_capacities_gb']) ?> GB<?= !empty($sv['storage_technology']) ? ' (' . escapar($sv['storage_technology']) . ')' : '' ?>
+                                    <?= escapar($ram_txt) ?> GB<?= !empty($sv['ram_technology']) ? ' (' . escapar($sv['ram_technology']) . ')' : '' ?>
+                                    / <?= escapar($sto_txt) ?> GB<?= !empty($sv['storage_technology']) ? ' (' . escapar($sv['storage_technology']) . ')' : '' ?>
                                 </strong>
                             </li>
+                            <?php if (!empty($precios_version)): ?>
+                                <li class="li-precios-version"><?= implode(' · ', $precios_version) ?></li>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <li><span>Versiones:</span> <strong>N/D</strong></li>
@@ -401,6 +425,15 @@ try {
                     <p class="carrier-detalles"><strong>Detalles de la operadora:</strong><br><?= nl2br(escapar($meta['carrier_details'])) ?></p>
                 <?php endif; ?>
             </section>
+
+            <!-- Prioridad de compra: noveno cuadro, solo visible para el administrador -->
+            <?php if ($es_admin): ?>
+                <section class="tarjeta tarjeta-prioridad">
+                    <h2>🎯 Prioridad de compra</h2>
+                    <p class="prioridad-etiqueta prioridad-<?= escapar($clave_prioridad) ?>"><?= escapar($lista_prioridades[$clave_prioridad]) ?></p>
+                    <p class="aviso-solo-admin">🔒 Solo visible para el administrador</p>
+                </section>
+            <?php endif; ?>
         </div>
 
         <!-- Sistema de Cámaras -->
@@ -415,7 +448,8 @@ try {
                             <p><strong>Resolución:</strong> <?= mostrar_num($c['resolution_mp'] ?? null, ' MP') ?></p>
                             <p><strong>Apertura:</strong> <?= !empty($c['aperture']) ? 'f/' . escapar(num_limpio($c['aperture'])) : 'N/D' ?></p>
                             <hr class="cam-divider">
-                            <p class="cam-spec-text"><strong>Vídeo Normal:</strong> <?php $video_normal = implode(' / ', array_filter([$c['normal_video_max'] ?? '', $c['normal_video_max_2'] ?? ''], function ($t) { return $t !== null && $t !== ''; })); ?><?= mostrar($video_normal !== '' ? $video_normal : null) ?></p>
+                            <?php $video_normal = implode(' / ', array_filter([$c['normal_video_max'] ?? '', $c['normal_video_max_2'] ?? ''], function ($t) { return $t !== null && $t !== ''; })); ?>
+                            <p class="cam-spec-text"><strong>Vídeo Normal:</strong> <?= mostrar($video_normal !== '' ? $video_normal : null) ?></p>
                             <p class="cam-spec-text"><strong>LOG:</strong> <?= formato_video($c['has_log'] ?? 0, $c['log_resolution'] ?? '', $c['log_fps'] ?? '', $c['log_resolution_2'] ?? '', $c['log_fps_2'] ?? '') ?></p>
                             <p class="cam-spec-text"><strong>OpenGate:</strong> <?= formato_video($c['has_opengate'] ?? 0, $c['opengate_resolution'] ?? '', $c['opengate_fps'] ?? '', $c['opengate_resolution_2'] ?? '', $c['opengate_fps_2'] ?? '') ?></p>
                             <p class="cam-spec-text"><strong>OpenGate + LOG:</strong> <?= formato_video($c['has_opengate_log'] ?? 0, $c['opengate_log_resolution'] ?? '', $c['opengate_log_fps'] ?? '', $c['opengate_log_resolution_2'] ?? '', $c['opengate_log_fps_2'] ?? '') ?></p>
@@ -429,39 +463,4 @@ try {
 
     </main>
 
-    <footer class="pie">
-        <div class="contenedor">
-            <p>Catálogo de smartphones · Proyecto personal estilo Kimovil</p>
-        </div>
-    </footer>
-
-    <?php if ($tiene_notas): ?>
-    <!-- ============================================================================
-         FASE 4: SCRIPT JAVASCRIPT (GRÁFICO RADAR HEXÁGONO)
-         ============================================================================ -->
-    <script>
-        const ctx = document.getElementById('radarHexagono').getContext('2d');
-        const etiquetas = <?= json_encode(['Diseño', 'Pantalla', 'Rendimiento', 'Cámaras', 'Batería', 'Software'], JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-        const valores = <?= json_encode($vals) ?>;
-
-        new Chart(ctx, {
-            type: 'radar',
-            data: {
-                labels: etiquetas,
-                datasets: [{
-                    data: valores,
-                    backgroundColor: 'rgba(52, 152, 219, 0.15)',
-                    borderColor: 'rgba(255, 255, 255, 0.4)',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                scales: {
-                    r: { min: 0, max: 10, ticks: { stepSize: 2, display: false } }
-                }
-            }
-        });
-    </script>
-    <?php endif; ?>
-</body>
-</html>
+<?php require __DIR__ . '/includes/footer.php'; ?>

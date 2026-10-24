@@ -38,8 +38,8 @@ CREATE TABLE operative_systems (
 
 CREATE TABLE brands (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    operative_system_id INT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    operative_system_id INT, -- Ya no se usa: el sistema operativo es de cada móvil
     FOREIGN KEY (operative_system_id) REFERENCES operative_systems(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -47,6 +47,7 @@ CREATE TABLE series (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     brand_id INT NOT NULL,
+    UNIQUE KEY uq_series_brand_name (brand_id, name),
     FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -56,10 +57,14 @@ CREATE TABLE series (
 CREATE TABLE phones (
     id INT AUTO_INCREMENT PRIMARY KEY,
     series_id INT NOT NULL,
+    operative_system_id INT NULL, -- Sistema operativo propio de cada móvil
     name VARCHAR(150) NOT NULL,
     launch_year INT NOT NULL,
     tier VARCHAR(50) NOT NULL,
-    FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE
+    variant_group_id INT NULL, -- Los móviles con el mismo número son variantes regionales entre sí
+    INDEX idx_phones_variant_group (variant_group_id),
+    FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE,
+    FOREIGN KEY (operative_system_id) REFERENCES operative_systems(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ========================================================
@@ -71,6 +76,7 @@ CREATE TABLE software_support (
     initial_skin VARCHAR(100),
     os_and_skin_update_years INT,
     security_update_years INT,
+    UNIQUE KEY uq_software_support_phone (phone_id),
     FOREIGN KEY (phone_id) REFERENCES phones(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -82,6 +88,7 @@ CREATE TABLE phone_metadata (
     phone_id INT NOT NULL,
     image_url VARCHAR(255),
     score_avg DECIMAL(4,2) DEFAULT 0.00,
+    priority VARCHAR(20) NOT NULL DEFAULT 'ninguna', -- ninguna, baja, media, alta, obtenido (solo admin)
     -- Las 6 notas personales que dibuja el hexágono de detalles.php (0 - 10) y el comentario
     score_1 DECIMAL(4,2) NULL, -- Diseño
     score_2 DECIMAL(4,2) NULL, -- Pantalla
@@ -112,7 +119,7 @@ CREATE TABLE phone_metadata (
     price_carrier DECIMAL(10,2),
     carrier_currency VARCHAR(10) DEFAULT 'EUR',
     carrier_details TEXT, -- Nombre de la operadora y detalles
-
+    UNIQUE KEY uq_phone_metadata_phone (phone_id),
     FOREIGN KEY (phone_id) REFERENCES phones(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -122,6 +129,7 @@ CREATE TABLE phone_metadata (
 CREATE TABLE phone_characteristics (
     id INT AUTO_INCREMENT PRIMARY KEY,
     phone_id INT NOT NULL,
+    UNIQUE KEY uq_phone_characteristics_phone (phone_id),
     FOREIGN KEY (phone_id) REFERENCES phones(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -139,6 +147,7 @@ CREATE TABLE characteristics_soc (
     antutu_score INT,
     geekbench_single INT,
     geekbench_multi INT,
+    UNIQUE KEY uq_characteristics_soc_char (phone_characteristic_id),
     FOREIGN KEY (phone_characteristic_id) REFERENCES phone_characteristics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -150,6 +159,18 @@ CREATE TABLE characteristics_storage_versions (
     ram_technology VARCHAR(50) NOT NULL,
     storage_capacities_gb VARCHAR(50) NOT NULL,
     storage_technology VARCHAR(50) NOT NULL,
+    ram_gb INT NULL, -- RAM en GB (número)
+    storage_gb INT NULL, -- Almacenamiento en GB (número)
+    price_global DECIMAL(10,2) NULL,
+    price_ue DECIMAL(10,2) NULL,
+    price_china DECIMAL(10,2) NULL,
+    price_india DECIMAL(10,2) NULL,
+    price_japan DECIMAL(10,2) NULL,
+    price_korea DECIMAL(10,2) NULL,
+    price_usa DECIMAL(10,2) NULL,
+    price_latam DECIMAL(10,2) NULL,
+    price_taiwan DECIMAL(10,2) NULL,
+    price_russia DECIMAL(10,2) NULL,
     FOREIGN KEY (phone_characteristic_id) REFERENCES phone_characteristics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -161,6 +182,7 @@ CREATE TABLE characteristics_screen (
     resolution VARCHAR(50),
     refresh_rate_hz INT,
     technology VARCHAR(100),
+    UNIQUE KEY uq_characteristics_screen_char (phone_characteristic_id),
     FOREIGN KEY (phone_characteristic_id) REFERENCES phone_characteristics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -173,7 +195,8 @@ CREATE TABLE characteristics_battery (
     wireless_charging_w INT,
     reverse_wired_charging_w INT,
     reverse_wireless_charging_w INT,
-    assured_cycles_80_health INT NULL, -- Ciclos hasta el 80 % de salud
+    assured_cycles_80_health INT NULL, -- Ciclos hasta el 80 % de salud,
+    UNIQUE KEY uq_characteristics_battery_char (phone_characteristic_id),
     FOREIGN KEY (phone_characteristic_id) REFERENCES phone_characteristics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -187,6 +210,7 @@ CREATE TABLE characteristics_connectivity (
     nfc TINYINT(1) DEFAULT 0,
     esim_support TINYINT(1) DEFAULT 0,
     android_auto TINYINT(1) DEFAULT 0,
+    UNIQUE KEY uq_characteristics_connectivity_char (phone_characteristic_id),
     FOREIGN KEY (phone_characteristic_id) REFERENCES phone_characteristics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

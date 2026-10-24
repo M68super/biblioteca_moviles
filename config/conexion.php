@@ -1,7 +1,22 @@
 <?php
-// Iniciar sesión globalmente
+// Iniciar sesión globalmente (cookie solo accesible por el servidor y no enviada desde otros sitios)
 if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.use_strict_mode', '1');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure'   => !empty($_SERVER['HTTPS']),
+    ]);
     session_start();
+}
+
+// Cabeceras de seguridad básicas
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: same-origin');
 }
 
 $host = 'localhost';

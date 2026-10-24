@@ -1,0 +1,44 @@
+CATÁLOGO DE MÓVILES · ACTUALIZACIÓN 2026-10-23
+================================================
+
+ANTES DE EMPEZAR
+  1. Haz una copia de seguridad de la base de datos (phpMyAdmin > Exportar) y de la carpeta del proyecto
+     (o un commit en Git).
+
+1. COPIAR ARCHIVOS
+  Copia todo el contenido de esta carpeta dentro de tu proyecto, respetando las subcarpetas
+  (config, includes, css, js, uploads, sql). Después puedes borrar los archivos que ya no se usan:
+    - css/estilos.css y css/estilos-viejo.css     (ahora hay una hoja general.css y una por página)
+    - css/chart.js                                  (ahora está en js/chart.js)
+    - index-viejo.php, detalles-viejo.php, *_1.php
+  Si tu proyecto está en una subcarpeta de htdocs, no hace falta cambiar nada.
+
+2. BASE DE DATOS (phpMyAdmin, base phone_catalog). Ejecuta, por este orden, SOLO los que no hayas ejecutado ya:
+    sql/migracion_notas.sql                  (6 notas del hexágono + comentario personal)
+    sql/migracion_bateria_video_auto.sql     (ciclos de batería, Android Auto, 2ª opción de vídeo)
+    sql/migracion_2026-10-23.sql             (SO por móvil, variantes, prioridad, memoria numérica y precios por versión)
+  Si falta alguna, la web te mostrará un aviso indicando qué columnas faltan.
+
+3. PRIMER ADMINISTRADOR (ya no existe el acceso admin / admin)
+  Abre en el navegador:  http://localhost/TU_CARPETA/crear_admin.php
+  Elige usuario y contraseña (mínimo 10 caracteres). Después BORRA el archivo crear_admin.php.
+  Los usuarios normales que ya existieran sin contraseña tendrán que volver a registrarse.
+
+4. CONVERTIR LA MEMORIA A NÚMEROS (solo si tenías móviles con versiones de memoria ya guardadas)
+  Inicia sesión como administrador y abre:  migrar_memoria.php
+  Revisa la propuesta y pulsa "Convertir ahora". Luego borra el archivo migrar_memoria.php.
+  Después, en Panel Admin > Editar, revisa cada móvil y añade el precio de cada versión.
+
+5. ÍNDICES ÚNICOS (evitan duplicados) - opcional pero recomendado
+  Ejecuta primero las consultas de diagnóstico de sql/migracion_indices_unicos.sql: deben devolver 0 filas.
+  Si no devuelven nada, ejecuta los ALTER TABLE del mismo archivo.
+
+6. SUBIDA DE IMÁGENES
+  Las fotos se guardan en uploads/moviles/. En XAMPP revisa php.ini (Config > PHP):
+    upload_max_filesize = 8M
+    post_max_size = 16M
+  y reinicia Apache. La carpeta uploads/ lleva un .htaccess que impide ejecutar código dentro de ella.
+
+SI ALGO FALLA
+  - sql/estructura_2026-10-23.sql crea la base de datos completa desde cero (¡borra los datos!).
+  - Mira la sección de errores de Apache (xampp/apache/logs/error.log) y de PHP (xampp/php/logs/php_error_log).

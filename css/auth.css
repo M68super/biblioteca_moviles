@@ -1,0 +1,53 @@
+/* ==========================================================================
+   AUTH.CSS · Páginas de acceso: login.php, register.php y crear_admin.php.
+   ========================================================================== */
+
+
+
+.auth-card {
+    max-width: 450px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+.campo-auth {
+    margin-bottom: 15px;
+}
+
+.campo-auth label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.campo-auth input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.btn-auth {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    background: #18263b;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-auth:hover {
+    background: #243651;
+}
+
+.auth-enlace {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.auth-enlace a {
+    color: #3264b3;
+}

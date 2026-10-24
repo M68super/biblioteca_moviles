@@ -2,37 +2,19 @@
 /**
  * ============================================================================
  * COMPARAR.PHP · COMPARADOR AVANZADO DE SMARTPHONES
- * Adaptado a la estructura de base de datos: estructura_2026-10-20.sql
  * ============================================================================
- *  FASE 1: Configuración, sesión y conexión
+ *  FASE 1: Configuración y funciones auxiliares
  *  FASE 2: Carga de dispositivos y selección para la comparativa
- *  FASE 3: Funciones auxiliares del análisis comparativo
- *  FASE 4: Maquetación y script de filtrado de los selectores
+ *  FASE 3: Maquetación (cabecera común en includes/header.php)
  * ============================================================================
  */
 require_once __DIR__ . '/config/conexion.php';
-
-$sesion_iniciada = isset($_SESSION['user_id']);
-$nombre_usuario = $sesion_iniciada ? (string)($_SESSION['username'] ?? '') : '';
-$es_admin = $sesion_iniciada && !empty($_SESSION['is_admin']);
+require_once __DIR__ . '/includes/funciones.php';
+exigir_esquema($conexion);
 
 /**
- * ============================================================================
- * FASE 3 (se declaran antes de usarlas): FUNCIONES AUXILIARES
- * ============================================================================
+ * FASE 1: FUNCIONES AUXILIARES
  */
-function escapar($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
-
-// Quita ceros sobrantes de un DECIMAL de MySQL: "6.70" -> "6.7", "50.00" -> "50"
-function num_limpio($v) {
-    if ($v === null || $v === '') return '';
-    $s = (string)$v;
-    if (strpos($s, '.') !== false) {
-        $s = rtrim(rtrim($s, '0'), '.');
-    }
-    return $s;
-}
-
 function valOrDefault($v) {
     if ($v === null || $v === '' || $v === 'N/D') return 'N/D';
     return $v;
@@ -77,9 +59,7 @@ function consulta(PDO $conexion, $sql, $id, $todas = false) {
 }
 
 /**
- * ============================================================================
  * FASE 2: CARGA DE DISPOSITIVOS Y SELECCIÓN PARA COMPARATIVA
- * ============================================================================
  */
 try {
     $stmt_all = $conexion->query("
@@ -135,8 +115,8 @@ try {
             $m['scr']  = consulta($conexion, "SELECT * FROM characteristics_screen WHERE phone_characteristic_id = ? ORDER BY id LIMIT 1", $char_id);
             $m['bat']  = consulta($conexion, "SELECT * FROM characteristics_battery WHERE phone_characteristic_id = ? ORDER BY id LIMIT 1", $char_id);
             $m['conn'] = consulta($conexion, "SELECT * FROM characteristics_connectivity WHERE phone_characteristic_id = ? ORDER BY id LIMIT 1", $char_id);
-            // Versiones múltiples de memoria RAM y almacenamiento
-            $m['storage_versions'] = consulta($conexion, "SELECT * FROM characteristics_storage_versions WHERE phone_characteristic_id = ? ORDER BY id", $char_id, true);
+            // Versiones de memoria (RAM + almacenamiento), de menor a mayor
+            $m['storage_versions'] = consulta($conexion, "SELECT * FROM characteristics_storage_versions WHERE phone_characteristic_id = ? ORDER BY ram_gb, storage_gb, id", $char_id, true);
         }
 
         $moviles_comparacion[] = $m;
@@ -147,41 +127,17 @@ try {
 
 $num_activos = count($moviles_comparacion);
 $usar_largo = ($num_activos <= 3);
-?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comparador Avanzado de Smartphones</title>
-    <link rel="stylesheet" href="css/estilos.css">
-</head>
-<body>
 
-    <header class="cabecera">
-        <div class="contenedor">
-            <div class="header-top-bar">
-                <p class="sobrelinea">
-                    <a href="index.php" class="enlace-volver">&larr; VOLVER AL CATÁLOGO</a>
-                </p>
-                <div>
-                    <?php if ($sesion_iniciada): ?>
-                        <span class="usuario-logueado">Hola, <strong><?= escapar($nombre_usuario) ?></strong>
-                            <?php if ($es_admin): ?><span class="badge-admin">ADMIN</span><?php endif; ?>
-                        </span>
-                        <a href="logout.php" class="btn-sesion">Cerrar sesión</a>
-                    <?php else: ?>
-                        <a href="login.php" class="btn-sesion">Iniciar sesión</a>
-                        <a href="register.php" class="btn-sesion btn-registro">Registrarse</a>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <div>
-                <h1>⚖️ Comparador de Smartphones</h1>
-                <p class="subtitulo">Selecciona hasta 6 dispositivos para contrastar sus especificaciones técnicas cara a cara.</p>
-            </div>
-        </div>
-    </header>
+// Datos de la cabecera común
+$pagina_actual    = 'comparar';
+$pagina_titulo    = 'Comparador Avanzado de Smartphones';
+$pagina_h1        = '⚖️ Comparador de Smartphones';
+$pagina_subtitulo = 'Selecciona hasta 6 dispositivos para contrastar sus especificaciones técnicas cara a cara.';
+$pagina_css       = ['comparar'];
+$pagina_scripts   = '<script src="js/comparar.js"></script>';
+
+require __DIR__ . '/includes/header.php';
+?>
 
     <main class="contenedor espacio-cuerpo">
 
@@ -240,7 +196,7 @@ $usar_largo = ($num_activos <= 3);
 
                         // 1. Fotografía
                         $vals = [];
-                        foreach ($moviles_comparacion as $m) $vals[] = !empty($m['meta']['image_url']) ? $m['meta']['image_url'] : '';
+                        foreach ($moviles_comparacion as $m) $vals[] = url_imagen($m['meta']['image_url'] ?? '');
                         $filas_datos[] = ['Fotografía', 'Foto', $vals, true, false, true, []];
 
                         // 2. Nota Media
@@ -354,30 +310,34 @@ $usar_largo = ($num_activos <= 3);
                         }
                         $filas_datos[] = ['Geekbench (Mono / Multinúcleo)', 'Geekbench', $vals, false, true, false, $nums];
 
-                        // 11. Memoria RAM
+                        // 11. Memoria RAM (capacidades distintas entre las versiones del móvil)
                         $vals = []; $nums = [];
                         foreach ($moviles_comparacion as $m) {
-                            $textos = []; $mayor = null;
+                            $capacidades = []; $tecnologias = []; $mayor = null;
                             foreach ($m['storage_versions'] as $sv) {
-                                $textos[] = $sv['ram_capacities_gb'] . ' GB' . (!empty($sv['ram_technology']) ? ' (' . $sv['ram_technology'] . ')' : '');
-                                $mx = max_csv($sv['ram_capacities_gb']);
+                                $cap = $sv['ram_gb'] !== null ? (string)$sv['ram_gb'] : trim((string)($sv['ram_capacities_gb'] ?? ''));
+                                if ($cap !== '' && !in_array($cap, $capacidades, true)) $capacidades[] = $cap;
+                                if (!empty($sv['ram_technology']) && !in_array($sv['ram_technology'], $tecnologias, true)) $tecnologias[] = $sv['ram_technology'];
+                                $mx = max_csv($cap);
                                 if ($mx !== null && ($mayor === null || $mx > $mayor)) $mayor = $mx;
                             }
-                            $vals[] = $textos ? implode(' / ', $textos) : 'N/D';
+                            $vals[] = $capacidades ? implode(' / ', $capacidades) . ' GB' . ($tecnologias ? ' (' . implode(' / ', $tecnologias) . ')' : '') : 'N/D';
                             $nums[] = $mayor;
                         }
                         $filas_datos[] = ['Memoria RAM', 'RAM', $vals, false, true, false, $nums];
 
-                        // 12. Almacenamiento Interno
+                        // 12. Almacenamiento Interno (capacidades distintas entre las versiones del móvil)
                         $vals = []; $nums = [];
                         foreach ($moviles_comparacion as $m) {
-                            $textos = []; $mayor = null;
+                            $capacidades = []; $tecnologias = []; $mayor = null;
                             foreach ($m['storage_versions'] as $sv) {
-                                $textos[] = $sv['storage_capacities_gb'] . ' GB' . (!empty($sv['storage_technology']) ? ' (' . $sv['storage_technology'] . ')' : '');
-                                $mx = max_csv($sv['storage_capacities_gb']);
+                                $cap = $sv['storage_gb'] !== null ? (string)$sv['storage_gb'] : trim((string)($sv['storage_capacities_gb'] ?? ''));
+                                if ($cap !== '' && !in_array($cap, $capacidades, true)) $capacidades[] = $cap;
+                                if (!empty($sv['storage_technology']) && !in_array($sv['storage_technology'], $tecnologias, true)) $tecnologias[] = $sv['storage_technology'];
+                                $mx = max_csv($cap);
                                 if ($mx !== null && ($mayor === null || $mx > $mayor)) $mayor = $mx;
                             }
-                            $vals[] = $textos ? implode(' / ', $textos) : 'N/D';
+                            $vals[] = $capacidades ? implode(' / ', $capacidades) . ' GB' . ($tecnologias ? ' (' . implode(' / ', $tecnologias) . ')' : '') : 'N/D';
                             $nums[] = $mayor;
                         }
                         $filas_datos[] = ['Almacenamiento Interno', 'Almacenamiento', $vals, false, true, false, $nums];
@@ -405,6 +365,17 @@ $usar_largo = ($num_activos <= 3);
                             }
                         }
                         $filas_datos[] = ['Potencia de Carga', 'Carga', $vals, false, true, false, $nums];
+
+                        // 15. Prioridad de compra (siempre la última fila y solo visible para el administrador)
+                        if (es_admin()) {
+                            $lista_prioridades = prioridades();
+                            $vals = [];
+                            foreach ($moviles_comparacion as $m) {
+                                $clave = (string)($m['meta']['priority'] ?? 'ninguna');
+                                $vals[] = $lista_prioridades[$clave] ?? $lista_prioridades['ninguna'];
+                            }
+                            $filas_datos[] = ['Prioridad de compra (solo admin)', 'Prioridad', $vals, false, false, false, []];
+                        }
 
                         // Renderizado dinámico de filas con sistema de gradientes
                         foreach ($filas_datos as $fila) {
@@ -467,29 +438,4 @@ $usar_largo = ($num_activos <= 3);
 
     </main>
 
-    <footer class="pie">
-        <div class="contenedor">
-            <p>Catálogo de smartphones · Proyecto personal estilo Kimovil</p>
-        </div>
-    </footer>
-
-    <!-- ============================================================================
-         FASE 4: SCRIPT JAVASCRIPT (FILTRADO EN TIEMPO REAL DE LOS SLOTS)
-         ============================================================================ -->
-    <script>
-        /**
-         * Filtra dinámicamente las opciones del selector según el texto introducido en el buscador de cada slot
-         */
-        function filtrarSlot(index) {
-            const input = document.getElementById('buscador-slot-' + index).value.toLowerCase();
-            const select = document.getElementById('select_movil_' + index);
-            const opciones = select.options;
-
-            for (let i = 1; i < opciones.length; i++) {
-                const texto = opciones[i].text.toLowerCase();
-                opciones[i].style.display = texto.includes(input) ? "" : "none";
-            }
-        }
-    </script>
-</body>
-</html>
+<?php require __DIR__ . '/includes/footer.php'; ?>

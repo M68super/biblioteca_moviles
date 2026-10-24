@@ -1,0 +1,204 @@
+/* ==========================================================================
+   INDEX.CSS · Catálogo público (index.php): buscador avanzado y listado de móviles.
+   ========================================================================== */
+
+.introduccion {
+    padding: 28px 0 18px;
+}
+
+.introduccion h2,
+.encabezado-catalogo h2 {
+    margin-top: 0;
+    color: #18263b;
+}
+
+.catalogo {
+    padding-bottom: 48px;
+}
+
+.encabezado-catalogo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.contador {
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: #e4ebf7;
+    color: #263d62;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.grid-moviles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 18px;
+}
+
+.card-link-wrapper {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-link-wrapper:hover {
+    transform: translateY(-3px);
+}
+
+.marca {
+    margin: 0;
+    color: #3264b3;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+}
+
+.familia,
+.anio {
+    margin: 6px 0;
+    color: #596579;
+    font-size: 0.95rem;
+}
+
+.tier-badge {
+    float: right;
+    background: #e4ebf7;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #3264b3;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.search-buttons-row {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-aplicar-filtros {
+    flex: 2;
+    padding: 12px;
+    background: #3264b3;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.btn-restablecer-filtros {
+    flex: 1;
+    padding: 12px;
+    background: #e4ebf7;
+    color: #3264b3;
+    text-decoration: none;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    line-height: normal;
+}
+
+@media (max-width: 600px) {
+    .encabezado-catalogo {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+/* Buscador avanzado */
+.busqueda-avanzada-box {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #e0e5ed;
+    margin-top: 25px;
+}
+
+.busqueda-avanzada-box h2 {
+    margin-top: 0;
+}
+
+.busqueda-nombre {
+    margin-bottom: 20px;
+}
+
+.fila-rango {
+    display: flex;
+    gap: 6px;
+}
+
+.fila-rango input {
+    min-width: 0;
+}
+
+/* Tarjetas del listado: foto, nota y precio */
+.tarjeta .anio::after {
+    content: "";
+    display: block;
+    clear: both;
+}
+
+.card-imagen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 150px;
+    margin-bottom: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card-imagen img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.card-pie {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e0e5ed;
+    font-size: 0.9rem;
+}
+
+.card-nota {
+    background: #18263b;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.card-nota:empty {
+    display: none;
+}
+
+.card-precio {
+    color: #596579;
+    font-weight: 600;
+}
+
+.estado-vacio {
+    padding: 28px;
+    background: white;
+    border: 1px solid #e0e5ed;
+    border-left: 4px solid #6b8ed6;
+    border-radius: 8px;
+}
+
+.estado-vacio h3 {
+    margin-top: 0;
+}
