@@ -1126,3 +1126,53 @@ textarea {
     font-size: 0.85rem;
     color: #596579;
 }
+
+/* Vídeo con dos opciones de resolución + fps por cada tipo */
+.cam-video-fila.con-opcion2 {
+    grid-template-columns: 170px 1fr 80px 1fr 80px;
+}
+
+@media (max-width: 600px) {
+    .cam-video-fila.con-opcion2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Precio con operadora: campos a todo el ancho, uno encima de otro */
+.operadora-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.operadora-grid textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* Ficha del móvil: opinión personal y detalles de la operadora */
+.tarjeta-comentario {
+    margin-bottom: 20px;
+    border-left: 4px solid #3264b3;
+}
+
+.tarjeta-comentario h2 {
+    margin-top: 0;
+}
+
+.comentario-texto {
+    margin: 0;
+    line-height: 1.7;
+    color: #202938;
+    overflow-wrap: anywhere;
+}
+
+.carrier-detalles {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    background: #f4f6fa;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #596579;
+    overflow-wrap: anywhere;
+}

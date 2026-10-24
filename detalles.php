@@ -61,13 +61,17 @@ function formato_precio($v, $simbolo) {
     return escapar(number_format($v, $dec, ',', '.') . ' ' . $simbolo);
 }
 
-// Texto de un modo de vídeo (LOG / OpenGate / OpenGate+LOG)
-function formato_video($tiene, $resolucion, $fps) {
+// Texto de un modo de vídeo (LOG / OpenGate / OpenGate+LOG) con hasta dos opciones: "4K @ 120fps / 8K @ 30fps"
+function formato_video($tiene, $resolucion, $fps, $resolucion2 = '', $fps2 = '') {
     if (empty($tiene)) return 'No tiene';
-    $partes = [];
-    if (!empty($resolucion)) $partes[] = $resolucion;
-    if (!empty($fps)) $partes[] = ($partes ? '@ ' : '') . $fps . 'fps';
-    return $partes ? escapar(implode(' ', $partes)) : 'Sí';
+    $opciones = [];
+    foreach ([[$resolucion, $fps], [$resolucion2, $fps2]] as $par) {
+        $partes = [];
+        if (!empty($par[0])) $partes[] = $par[0];
+        if (!empty($par[1])) $partes[] = ($partes ? '@ ' : '') . $par[1] . 'fps';
+        if ($partes) $opciones[] = implode(' ', $partes);
+    }
+    return $opciones ? escapar(implode(' / ', $opciones)) : 'Sí';
 }
 
 // Regiones de precio (columnas de phone_metadata)
@@ -247,6 +251,14 @@ try {
 
     <main class="contenedor espacio-cuerpo">
 
+        <!-- Comentario personal sobre el móvil (visible para todos los visitantes) -->
+        <?php if (!empty($meta['personal_comment'])): ?>
+            <section class="tarjeta tarjeta-comentario">
+                <h2>💬 Mi opinión sobre este móvil</h2>
+                <p class="comentario-texto"><?= nl2br(escapar($meta['personal_comment'])) ?></p>
+            </section>
+        <?php endif; ?>
+
         <!-- Otros modelos de la familia y acceso al comparador -->
         <section class="tarjeta tarjeta-variantes">
             <h3>📱 Otros modelos de la familia <?= escapar($movil['familia']) ?></h3>
@@ -347,6 +359,7 @@ try {
                     <li><span>Capacidad:</span> <strong><?= mostrar_num($bat['capacity_mah'] ?? null, ' mAh') ?></strong></li>
                     <li><span>Carga Cable:</span> <strong><?= mostrar_num($bat['wired_charging_w'] ?? null, 'W') ?></strong></li>
                     <li><span>Carga Inalámbrica:</span> <strong><?= $bat ? potencia($bat['wireless_charging_w'] ?? null) : 'N/D' ?></strong></li>
+                    <li><span>Ciclos (80% salud):</span> <strong><?= mostrar_num($bat['assured_cycles_80_health'] ?? null, ' ciclos') ?></strong></li>
                     <li><span>Inversa (Cable/Inál.):</span> <strong><?= $bat ? potencia($bat['reverse_wired_charging_w'] ?? null) . ' / ' . potencia($bat['reverse_wireless_charging_w'] ?? null) : 'N/D' ?></strong></li>
                 </ul>
             </section>
@@ -358,6 +371,7 @@ try {
                     <li><span>Red Móvil:</span> <strong><?= mostrar($conn['mobile_network'] ?? null) ?></strong></li>
                     <li><span>Wi-Fi:</span> <strong><?= mostrar($conn['wifi_version'] ?? null) ?></strong></li>
                     <li><span>Bluetooth:</span> <strong><?= mostrar($conn['bluetooth_version'] ?? null) ?></strong></li>
+                    <li><span>Android Auto:</span> <strong><?= $conn ? (!empty($conn['android_auto']) ? 'Compatible' : 'No') : 'N/D' ?></strong></li>
                     <li><span>NFC / eSIM:</span> <strong><?= $conn ? (!empty($conn['nfc']) ? 'Sí' : 'No') . ' / ' . (!empty($conn['esim_support']) ? 'Compatible' : 'No') : 'N/D' ?></strong></li>
                 </ul>
             </section>
@@ -375,7 +389,7 @@ try {
                     <?php endforeach; ?>
                     <?php if (!empty($meta['price_carrier']) && (float)$meta['price_carrier'] > 0): $hay_precios = true; ?>
                         <li>
-                            <span>Operadora<?= !empty($meta['carrier_details']) ? ' (' . escapar($meta['carrier_details']) . ')' : '' ?>:</span>
+                            <span>Operadora:</span>
                             <strong><?= formato_precio($meta['price_carrier'], !empty($meta['carrier_currency']) ? $meta['carrier_currency'] : 'EUR') ?></strong>
                         </li>
                     <?php endif; ?>
@@ -383,6 +397,9 @@ try {
                         <li><span>Precios:</span> <strong>No especificados</strong></li>
                     <?php endif; ?>
                 </ul>
+                <?php if (!empty($meta['carrier_details'])): ?>
+                    <p class="carrier-detalles"><strong>Detalles de la operadora:</strong><br><?= nl2br(escapar($meta['carrier_details'])) ?></p>
+                <?php endif; ?>
             </section>
         </div>
 
@@ -398,10 +415,10 @@ try {
                             <p><strong>Resolución:</strong> <?= mostrar_num($c['resolution_mp'] ?? null, ' MP') ?></p>
                             <p><strong>Apertura:</strong> <?= !empty($c['aperture']) ? 'f/' . escapar(num_limpio($c['aperture'])) : 'N/D' ?></p>
                             <hr class="cam-divider">
-                            <p class="cam-spec-text"><strong>Vídeo Normal:</strong> <?= mostrar($c['normal_video_max'] ?? null) ?></p>
-                            <p class="cam-spec-text"><strong>LOG:</strong> <?= formato_video($c['has_log'] ?? 0, $c['log_resolution'] ?? '', $c['log_fps'] ?? '') ?></p>
-                            <p class="cam-spec-text"><strong>OpenGate:</strong> <?= formato_video($c['has_opengate'] ?? 0, $c['opengate_resolution'] ?? '', $c['opengate_fps'] ?? '') ?></p>
-                            <p class="cam-spec-text"><strong>OpenGate + LOG:</strong> <?= formato_video($c['has_opengate_log'] ?? 0, $c['opengate_log_resolution'] ?? '', $c['opengate_log_fps'] ?? '') ?></p>
+                            <p class="cam-spec-text"><strong>Vídeo Normal:</strong> <?php $video_normal = implode(' / ', array_filter([$c['normal_video_max'] ?? '', $c['normal_video_max_2'] ?? ''], function ($t) { return $t !== null && $t !== ''; })); ?><?= mostrar($video_normal !== '' ? $video_normal : null) ?></p>
+                            <p class="cam-spec-text"><strong>LOG:</strong> <?= formato_video($c['has_log'] ?? 0, $c['log_resolution'] ?? '', $c['log_fps'] ?? '', $c['log_resolution_2'] ?? '', $c['log_fps_2'] ?? '') ?></p>
+                            <p class="cam-spec-text"><strong>OpenGate:</strong> <?= formato_video($c['has_opengate'] ?? 0, $c['opengate_resolution'] ?? '', $c['opengate_fps'] ?? '', $c['opengate_resolution_2'] ?? '', $c['opengate_fps_2'] ?? '') ?></p>
+                            <p class="cam-spec-text"><strong>OpenGate + LOG:</strong> <?= formato_video($c['has_opengate_log'] ?? 0, $c['opengate_log_resolution'] ?? '', $c['opengate_log_fps'] ?? '', $c['opengate_log_resolution_2'] ?? '', $c['opengate_log_fps_2'] ?? '') ?></p>
                         </div>
                     <?php endforeach; ?>
                 </div>

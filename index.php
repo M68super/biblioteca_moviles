@@ -133,22 +133,47 @@ function vn($seccion, $campo, $defecto = '') {
     return ($x === null || $x === '') ? escapar($defecto) : escapar(num_limpio($x));
 }
 
-// ¿Tiene phone_metadata las 6 notas (score_1..score_6) y el comentario personal?
-// Son las columnas que dibujan el hexágono de detalles.php. Se crean con migracion_notas.sql.
-function bd_tiene_notas(PDO $conexion) {
-    static $resultado = null;
-    if ($resultado === null) {
-        $q = $conexion->query("SELECT COUNT(*) FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'phone_metadata'
-              AND COLUMN_NAME IN ('score_1','score_2','score_3','score_4','score_5','score_6','personal_comment')");
-        $resultado = ((int)$q->fetchColumn() === 7);
+// ¿Existen en la base de datos todas estas columnas? Así el panel no se rompe si falta alguna migración.
+function bd_tiene_columnas(PDO $conexion, $tabla, array $columnas) {
+    static $cache = [];
+    $clave = $tabla . ':' . implode(',', $columnas);
+    if (!isset($cache[$clave])) {
+        $marcas = implode(',', array_fill(0, count($columnas), '?'));
+        $q = $conexion->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME IN ($marcas)");
+        $q->execute(array_merge([$tabla], $columnas));
+        $cache[$clave] = ((int)$q->fetchColumn() === count($columnas));
     }
-    return $resultado;
+    return $cache[$clave];
+}
+
+// 6 notas del hexágono + comentario personal (migracion_notas.sql)
+function bd_tiene_notas(PDO $conexion) {
+    return bd_tiene_columnas($conexion, 'phone_metadata', ['score_1', 'score_2', 'score_3', 'score_4', 'score_5', 'score_6', 'personal_comment']);
+}
+
+// Ciclos de batería al 80 % de salud (migracion_bateria_video_auto.sql)
+function bd_tiene_ciclos(PDO $conexion) {
+    return bd_tiene_columnas($conexion, 'characteristics_battery', ['assured_cycles_80_health']);
+}
+
+// Soporte de Android Auto (migracion_bateria_video_auto.sql)
+function bd_tiene_android_auto(PDO $conexion) {
+    return bd_tiene_columnas($conexion, 'characteristics_connectivity', ['android_auto']);
+}
+
+// Segunda opción de resolución / fps en cada tipo de vídeo (migracion_bateria_video_auto.sql)
+function bd_tiene_video2(PDO $conexion) {
+    return bd_tiene_columnas($conexion, 'camera_modules', [
+        'normal_video_max_2', 'log_resolution_2', 'log_fps_2',
+        'opengate_resolution_2', 'opengate_fps_2', 'opengate_log_resolution_2', 'opengate_log_fps_2',
+    ]);
 }
 
 // Convierte una fila de camera_modules en el formato que usa el formulario (JS)
 function camaraParaForm(array $c) {
     list($vres, $vfps) = partir_video($c['normal_video_max'] ?? '');
+    list($vres2, $vfps2) = partir_video($c['normal_video_max_2'] ?? '');
     return [
         'type'          => (string)($c['camera_type'] ?? ''),
         'sensor_name'   => (string)($c['sensor_name'] ?? ''),
@@ -157,6 +182,8 @@ function camaraParaForm(array $c) {
         'aperture'      => num_limpio($c['aperture'] ?? ''),
         'video_res'     => $vres,
         'video_fps'     => $vfps,
+        'video_res2'    => $vres2,
+        'video_fps2'    => $vfps2,
         'has_log'       => !empty($c['has_log']),
         'log_res'       => (string)($c['log_resolution'] ?? ''),
         'log_fps'       => (string)($c['log_fps'] ?? ''),
@@ -166,6 +193,12 @@ function camaraParaForm(array $c) {
         'has_ogl'       => !empty($c['has_opengate_log']),
         'ogl_res'       => (string)($c['opengate_log_resolution'] ?? ''),
         'ogl_fps'       => (string)($c['opengate_log_fps'] ?? ''),
+        'log_res2'      => (string)($c['log_resolution_2'] ?? ''),
+        'log_fps2'      => (string)($c['log_fps_2'] ?? ''),
+        'og_res2'       => (string)($c['opengate_resolution_2'] ?? ''),
+        'og_fps2'       => (string)($c['opengate_fps_2'] ?? ''),
+        'ogl_res2'      => (string)($c['opengate_log_resolution_2'] ?? ''),
+        'ogl_fps2'      => (string)($c['opengate_log_fps_2'] ?? ''),
     ];
 }
 
@@ -257,45 +290,57 @@ function guardarFila(PDO $conexion, $tabla, $col_fk, $id_fk, array $datos) {
     }
 }
 
+// Texto de un modo de vídeo para guardar: "4K @ 120fps" (o solo "4K" si no hay fps). Null si no hay resolución.
+function texto_video($resolucion, $fps) {
+    $resolucion = is_array($resolucion) ? '' : trim((string)($resolucion ?? ''));
+    if ($resolucion === '') return null;
+    $fps = int_o_null($fps);
+    return $resolucion . ($fps !== null ? ' @ ' . $fps . 'fps' : '');
+}
+
 /**
- * Inserta un módulo de cámara en camera_modules (principal o auxiliar)
+ * Inserta un módulo de cámara en camera_modules (principal o auxiliar).
+ * Cada tipo de vídeo admite dos opciones de resolución / fps (ej: 4K 120fps y 8K 30fps).
  */
 function insertarCamara(PDO $conexion, $char_id, $tipo, array $d) {
-    $sensor = texto_o_null($d['sensor_name'] ?? '') ?? 'No especificado';
-
-    $video_res = trim((string)($d['video_res'] ?? ''));
-    $video_fps = int_o_null($d['video_fps'] ?? '');
-    $normal_video = ($video_res !== '')
-        ? $video_res . ($video_fps !== null ? ' @ ' . $video_fps . 'fps' : '')
-        : null;
-
     $has_log = !empty($d['has_log']) ? 1 : 0;
     $has_og  = !empty($d['has_og']) ? 1 : 0;
     $has_ogl = !empty($d['has_ogl']) ? 1 : 0;
 
-    $conexion->prepare("INSERT INTO camera_modules (
-            phone_characteristic_id, camera_type, sensor_name, sensor_size, resolution_mp, aperture,
-            normal_video_max, has_log, log_resolution, log_fps,
-            has_opengate, opengate_resolution, opengate_fps,
-            has_opengate_log, opengate_log_resolution, opengate_log_fps
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")->execute([
-        $char_id,
-        $tipo,
-        $sensor,
-        texto_o_null($d['sensor_size'] ?? ''),
-        dec_o_null($d['resolution_mp'] ?? ''),
-        dec_o_null($d['aperture'] ?? ''),
-        $normal_video,
-        $has_log,
-        $has_log ? texto_o_null($d['log_res'] ?? '') : null,
-        $has_log ? int_o_null($d['log_fps'] ?? '') : null,
-        $has_og,
-        $has_og ? texto_o_null($d['og_res'] ?? '') : null,
-        $has_og ? int_o_null($d['og_fps'] ?? '') : null,
-        $has_ogl,
-        $has_ogl ? texto_o_null($d['ogl_res'] ?? '') : null,
-        $has_ogl ? int_o_null($d['ogl_fps'] ?? '') : null,
-    ]);
+    $datos = [
+        'phone_characteristic_id' => $char_id,
+        'camera_type'             => $tipo,
+        'sensor_name'             => texto_o_null($d['sensor_name'] ?? '') ?? 'No especificado',
+        'sensor_size'             => texto_o_null($d['sensor_size'] ?? ''),
+        'resolution_mp'           => dec_o_null($d['resolution_mp'] ?? ''),
+        'aperture'                => dec_o_null($d['aperture'] ?? ''),
+        'normal_video_max'        => texto_video($d['video_res'] ?? '', $d['video_fps'] ?? ''),
+        'has_log'                 => $has_log,
+        'log_resolution'          => $has_log ? texto_o_null($d['log_res'] ?? '') : null,
+        'log_fps'                 => $has_log ? int_o_null($d['log_fps'] ?? '') : null,
+        'has_opengate'            => $has_og,
+        'opengate_resolution'     => $has_og ? texto_o_null($d['og_res'] ?? '') : null,
+        'opengate_fps'            => $has_og ? int_o_null($d['og_fps'] ?? '') : null,
+        'has_opengate_log'        => $has_ogl,
+        'opengate_log_resolution' => $has_ogl ? texto_o_null($d['ogl_res'] ?? '') : null,
+        'opengate_log_fps'        => $has_ogl ? int_o_null($d['ogl_fps'] ?? '') : null,
+    ];
+
+    // Segunda opción de resolución / fps (solo si la base de datos ya tiene las columnas)
+    if (bd_tiene_video2($conexion)) {
+        $datos['normal_video_max_2']          = texto_video($d['video_res2'] ?? '', $d['video_fps2'] ?? '');
+        $datos['log_resolution_2']            = $has_log ? texto_o_null($d['log_res2'] ?? '') : null;
+        $datos['log_fps_2']                   = $has_log ? int_o_null($d['log_fps2'] ?? '') : null;
+        $datos['opengate_resolution_2']       = $has_og ? texto_o_null($d['og_res2'] ?? '') : null;
+        $datos['opengate_fps_2']              = $has_og ? int_o_null($d['og_fps2'] ?? '') : null;
+        $datos['opengate_log_resolution_2']   = $has_ogl ? texto_o_null($d['ogl_res2'] ?? '') : null;
+        $datos['opengate_log_fps_2']          = $has_ogl ? int_o_null($d['ogl_fps2'] ?? '') : null;
+    }
+
+    $columnas = array_keys($datos);
+    $marcas = implode(', ', array_fill(0, count($columnas), '?'));
+    $conexion->prepare("INSERT INTO camera_modules (`" . implode('`, `', $columnas) . "`) VALUES ($marcas)")
+             ->execute(array_values($datos));
 }
 
 /**
@@ -496,22 +541,30 @@ function guardarMovil(PDO $conexion, $phone_id, array $p) {
     ]);
 
     // --- Batería y carga ---
-    guardarFila($conexion, 'characteristics_battery', 'phone_characteristic_id', $char_id, [
+    $datos_bat = [
         'capacity_mah'                => int_o_null($p['mah'] ?? ''),
         'wired_charging_w'            => int_o_null($p['wired_w'] ?? ''),
         'wireless_charging_w'         => int_o_null($p['wireless_w'] ?? ''),
         'reverse_wired_charging_w'    => int_o_null($p['rev_wired_w'] ?? ''),
         'reverse_wireless_charging_w' => int_o_null($p['rev_wireless_w'] ?? ''),
-    ]);
+    ];
+    if (bd_tiene_ciclos($conexion)) {
+        $datos_bat['assured_cycles_80_health'] = int_o_null($p['cycles_80'] ?? '');
+    }
+    guardarFila($conexion, 'characteristics_battery', 'phone_characteristic_id', $char_id, $datos_bat);
 
     // --- Conectividad ---
-    guardarFila($conexion, 'characteristics_connectivity', 'phone_characteristic_id', $char_id, [
+    $datos_conn = [
         'mobile_network'    => texto_o_null($p['network'] ?? ''),
         'wifi_version'      => texto_o_null($p['wifi'] ?? ''),
         'bluetooth_version' => texto_o_null($p['bluetooth'] ?? ''),
         'nfc'               => isset($p['nfc']) ? 1 : 0,
         'esim_support'      => isset($p['esim']) ? 1 : 0,
-    ]);
+    ];
+    if (bd_tiene_android_auto($conexion)) {
+        $datos_conn['android_auto'] = isset($p['android_auto']) ? 1 : 0;
+    }
+    guardarFila($conexion, 'characteristics_connectivity', 'phone_characteristic_id', $char_id, $datos_conn);
 
     // --- Cámaras ---
     gestionarCamaras($conexion, $char_id, $p);
@@ -559,6 +612,14 @@ $sesion_iniciada = isset($_SESSION['user_id']);
 $nombre_usuario  = $sesion_iniciada ? (string)($_SESSION['username'] ?? '') : '';
 $es_admin        = $sesion_iniciada && !empty($_SESSION['is_admin']);
 $bd_tiene_notas  = bd_tiene_notas($conexion);
+$bd_ciclos       = bd_tiene_ciclos($conexion);
+$bd_android_auto = bd_tiene_android_auto($conexion);
+$bd_video2       = bd_tiene_video2($conexion);
+
+// Migraciones SQL que faltan por ejecutar (se avisa en el panel admin)
+$archivos_pendientes = [];
+if (!$bd_tiene_notas) $archivos_pendientes[] = 'migracion_notas.sql (6 notas y comentario personal)';
+if (!$bd_ciclos || !$bd_android_auto || !$bd_video2) $archivos_pendientes[] = 'migracion_bateria_video_auto.sql (ciclos de batería, Android Auto y segunda opción de vídeo)';
 
 $mensaje_exito = '';
 $mensaje_error = '';
@@ -680,7 +741,7 @@ $claves_filtro = [
     'f_cam_mp', 'f_cam_size',
     'f_log', 'f_opengate', 'f_opengate_log',
     'f_tier', 'f_ip', 'f_frame_material', 'f_back_material', 'f_peso_max',
-    'f_network', 'f_wifi', 'f_bt', 'f_nfc', 'f_esim',
+    'f_network', 'f_wifi', 'f_bt', 'f_nfc', 'f_esim', 'f_android_auto',
 ];
 foreach ($regiones as $clave => $info) {
     $claves_filtro[] = 'p_' . $clave . '_min';
@@ -822,6 +883,7 @@ try {
     if ($F['f_bt'] !== '')      { $sql .= " AND conn.bluetooth_version = :bt";      $params['bt'] = $F['f_bt']; }
     if ($F['f_nfc'] === '1' || $F['f_nfc'] === '0')   { $sql .= " AND conn.nfc = :nfc";           $params['nfc'] = (int)$F['f_nfc']; }
     if ($F['f_esim'] === '1' || $F['f_esim'] === '0') { $sql .= " AND conn.esim_support = :esim"; $params['esim'] = (int)$F['f_esim']; }
+    if ($bd_android_auto && ($F['f_android_auto'] === '1' || $F['f_android_auto'] === '0')) { $sql .= " AND conn.android_auto = :aauto"; $params['aauto'] = (int)$F['f_android_auto']; }
 
     $sql .= " ORDER BY marca ASC, movil ASC";
     $stmt = $conexion->prepare($sql);
@@ -986,6 +1048,9 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
 
                 <?php if ($mensaje_exito): ?><div class="alerta-exito"><?= escapar($mensaje_exito) ?></div><?php endif; ?>
                 <?php if ($mensaje_error): ?><div class="alerta-error"><?= escapar($mensaje_error) ?></div><?php endif; ?>
+                <?php if (!empty($archivos_pendientes)): ?>
+                    <div class="alerta-error">Faltan columnas en la base de datos para activar todos los campos del panel. Ejecuta en phpMyAdmin: <?= escapar(implode(' y ', $archivos_pendientes)) ?>.</div>
+                <?php endif; ?>
 
                 <?php if ($modo_admin === 'editar' && empty($ficha)): ?>
                     <p class="aviso-editar-instruccion">Selecciona un móvil arriba y pulsa "Cargar datos" para editarlo.</p>
@@ -1034,7 +1099,7 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
                         <details class="categoria-filtro">
                             <summary>2. Software y Soporte</summary>
                             <div class="categoria-contenido">
-                                <div><label>Sistema Operativo (se asocia a la marca):</label><input type="text" name="so_nombre" list="datalist_so" value="<?= v('phone', 'so_nombre') ?>"></div>
+                                <div><label>Sistema Operativo:</label><input type="text" name="so_nombre" list="datalist_so" value="<?= v('phone', 'so_nombre') ?>"></div>
                                 <div><label>Capa de Personalización:</label><input type="text" name="initial_skin" list="datalist_skins" value="<?= v('sw', 'initial_skin') ?>"></div>
                                 <div><label>Años Act. Sistema / Capa:</label><input type="number" name="os_updates" value="<?= v('sw', 'os_and_skin_update_years', 4) ?>"></div>
                                 <div><label>Años Parches de Seguridad:</label><input type="number" name="sec_updates" value="<?= v('sw', 'security_update_years', 5) ?>"></div>
@@ -1086,6 +1151,9 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
                                 <div><label>Carga Inalámbrica (W):</label><input type="number" name="wireless_w" value="<?= v('bat', 'wireless_charging_w') ?>"></div>
                                 <div><label>Carga Inversa Cable (W):</label><input type="number" name="rev_wired_w" value="<?= v('bat', 'reverse_wired_charging_w') ?>"></div>
                                 <div><label>Carga Inversa Inalámbrica (W):</label><input type="number" name="rev_wireless_w" value="<?= v('bat', 'reverse_wireless_charging_w') ?>"></div>
+                                <?php if ($bd_ciclos): ?>
+                                <div><label>Ciclos 80% salud:</label><input type="number" min="0" name="cycles_80" value="<?= v('bat', 'assured_cycles_80_health') ?>" placeholder="Ej: 1200" title="Ciclos de carga que asegura el fabricante antes de que la batería baje al 80 % de su capacidad"></div>
+                                <?php endif; ?>
                             </div>
                         </details>
 
@@ -1137,10 +1205,10 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
                                     <?php endforeach; ?>
                                 </div>
                                 <h4 class="subtitulo-admin">Precio con operadora</h4>
-                                <div class="dim-subgrid">
+                                <div class="operadora-grid">
                                     <div><label>Precio operadora:</label><input type="number" step="0.01" min="0" name="price_carrier" value="<?= v('meta', 'price_carrier') ?>"></div>
                                     <div><label>Moneda:</label><input type="text" name="carrier_currency" maxlength="10" value="<?= v('meta', 'carrier_currency', 'EUR') ?>"></div>
-                                    <div><label>Operadora y detalles:</label><input type="text" name="carrier_details" maxlength="255" value="<?= v('meta', 'carrier_details') ?>"></div>
+                                    <div><label>Operadora y detalles:</label><textarea name="carrier_details" rows="5" placeholder="Nombre de la operadora, condiciones, permanencia..."><?= v('meta', 'carrier_details') ?></textarea></div>
                                 </div>
                             </div>
                         </details>
@@ -1158,6 +1226,11 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
                                 <div class="checkbox-wrapper">
                                     <label class="checkbox-label"><input type="checkbox" name="esim" value="1" <?= !empty($ficha['conn']['esim_support']) ? 'checked' : '' ?>> eSIM</label>
                                 </div>
+                                <?php if ($bd_android_auto): ?>
+                                <div class="checkbox-wrapper">
+                                    <label class="checkbox-label"><input type="checkbox" name="android_auto" value="1" <?= !empty($ficha['conn']['android_auto']) ? 'checked' : '' ?>> Android Auto</label>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </details>
 
@@ -1457,7 +1530,7 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
                 </details>
 
                 <!-- 11. Conectividad -->
-                <details class="categoria-filtro"<?= abierto($F, ['f_network', 'f_wifi', 'f_bt', 'f_nfc', 'f_esim']) ?>>
+                <details class="categoria-filtro"<?= abierto($F, ['f_network', 'f_wifi', 'f_bt', 'f_nfc', 'f_esim', 'f_android_auto']) ?>>
                     <summary>📡 11. Conectividad</summary>
                     <div class="categoria-contenido">
                         <div>
@@ -1488,6 +1561,16 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
                                 <option value="0"<?= $F['f_esim'] === '0' ? ' selected' : '' ?>>No</option>
                             </select>
                         </div>
+                        <?php if ($bd_android_auto): ?>
+                        <div>
+                            <label>Android Auto:</label>
+                            <select name="f_android_auto">
+                                <option value="">-- Indiferente --</option>
+                                <option value="1"<?= $F['f_android_auto'] === '1' ? ' selected' : '' ?>>Sí</option>
+                                <option value="0"<?= $F['f_android_auto'] === '0' ? ' selected' : '' ?>>No</option>
+                            </select>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </details>
 
@@ -1614,16 +1697,24 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
          * Los nombres son main[campo] y aux[uid][campo], así cada cámara va agrupada al enviar.
          */
         const TIPOS_CAMARA_AUX = <?= json_encode($tipos_camara_aux, $flags_json) ?>;
+        const HAY_VIDEO2 = <?= $bd_video2 ? 'true' : 'false' ?>;
         const camaraPrincipal = <?= json_encode($cam_principal_js, $flags_json) ?>;
         const camarasAuxiliares = <?= json_encode($cams_aux_js, $flags_json) ?>;
         let contadorAux = 0;
 
-        function filaVideo(n, campoHas, campoRes, campoFps, titulo, activo, res, fps) {
+        // Una fila de vídeo: [título o casilla] [resolución 1] [fps 1] ([resolución 2] [fps 2] si la base de datos lo admite)
+        function filaVideo(n, titulo, campoHas, campoRes, campoFps, activo, res, fps, res2, fps2) {
+            const cabecera = campoHas
+                ? `<label class="checkbox-label"><input type="checkbox" name="${n(campoHas)}" value="1" ${activo ? 'checked' : ''}> ${titulo}</label>`
+                : `<span class="cam-video-titulo">${titulo}</span>`;
+            const opcion2 = HAY_VIDEO2 ? `
+                    <input type="text" name="${n(campoRes + '2')}" value="${esc(res2)}" placeholder="Opción 2: 8K">
+                    <input type="number" min="0" name="${n(campoFps + '2')}" value="${esc(fps2)}" placeholder="fps">` : '';
             return `
-                <div class="cam-video-fila">
-                    <label class="checkbox-label"><input type="checkbox" name="${n(campoHas)}" value="1" ${activo ? 'checked' : ''}> ${titulo}</label>
-                    <input type="text" name="${n(campoRes)}" value="${esc(res)}" placeholder="Resolución (ej: 4K)">
-                    <input type="number" min="0" name="${n(campoFps)}" value="${esc(fps)}" placeholder="fps">
+                <div class="cam-video-fila${HAY_VIDEO2 ? ' con-opcion2' : ''}">
+                    ${cabecera}
+                    <input type="text" name="${n(campoRes)}" value="${esc(res)}" placeholder="Opción 1: 4K">
+                    <input type="number" min="0" name="${n(campoFps)}" value="${esc(fps)}" placeholder="fps">${opcion2}
                 </div>`;
         }
 
@@ -1657,14 +1748,10 @@ $sug_trasera = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Ce
                     <div><label>Apertura Focal:</label><input type="number" step="0.01" name="${n('aperture')}" value="${esc(c.aperture)}" placeholder="Ej: 1.8"></div>
                 </div>
                 <div class="cam-video-bloque">
-                    <div class="cam-video-fila">
-                        <span class="cam-video-titulo">Vídeo normal máx.</span>
-                        <input type="text" name="${n('video_res')}" value="${esc(c.video_res)}" placeholder="Resolución (ej: 4K)">
-                        <input type="number" min="0" name="${n('video_fps')}" value="${esc(c.video_fps)}" placeholder="fps">
-                    </div>
-                    ${filaVideo(n, 'has_log', 'log_res', 'log_fps', 'LOG', c.has_log, c.log_res, c.log_fps)}
-                    ${filaVideo(n, 'has_og', 'og_res', 'og_fps', 'OpenGate', c.has_og, c.og_res, c.og_fps)}
-                    ${filaVideo(n, 'has_ogl', 'ogl_res', 'ogl_fps', 'OpenGate + LOG', c.has_ogl, c.ogl_res, c.ogl_fps)}
+                    ${filaVideo(n, 'Vídeo normal máx.', null, 'video_res', 'video_fps', false, c.video_res, c.video_fps, c.video_res2, c.video_fps2)}
+                    ${filaVideo(n, 'LOG', 'has_log', 'log_res', 'log_fps', c.has_log, c.log_res, c.log_fps, c.log_res2, c.log_fps2)}
+                    ${filaVideo(n, 'OpenGate', 'has_og', 'og_res', 'og_fps', c.has_og, c.og_res, c.og_fps, c.og_res2, c.og_fps2)}
+                    ${filaVideo(n, 'OpenGate + LOG', 'has_ogl', 'ogl_res', 'ogl_fps', c.has_ogl, c.ogl_res, c.ogl_fps, c.ogl_res2, c.ogl_fps2)}
                 </div>`;
         }
 

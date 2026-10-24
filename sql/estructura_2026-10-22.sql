@@ -111,7 +111,7 @@ CREATE TABLE phone_metadata (
     price_russia DECIMAL(10,2),
     price_carrier DECIMAL(10,2),
     carrier_currency VARCHAR(10) DEFAULT 'EUR',
-    carrier_details VARCHAR(255), -- Nombre de la operadora y detalles
+    carrier_details TEXT, -- Nombre de la operadora y detalles
 
     FOREIGN KEY (phone_id) REFERENCES phones(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -173,6 +173,7 @@ CREATE TABLE characteristics_battery (
     wireless_charging_w INT,
     reverse_wired_charging_w INT,
     reverse_wireless_charging_w INT,
+    assured_cycles_80_health INT NULL, -- Ciclos hasta el 80 % de salud
     FOREIGN KEY (phone_characteristic_id) REFERENCES phone_characteristics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -185,6 +186,7 @@ CREATE TABLE characteristics_connectivity (
     bluetooth_version VARCHAR(50),
     nfc TINYINT(1) DEFAULT 0,
     esim_support TINYINT(1) DEFAULT 0,
+    android_auto TINYINT(1) DEFAULT 0,
     FOREIGN KEY (phone_characteristic_id) REFERENCES phone_characteristics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -198,14 +200,21 @@ CREATE TABLE camera_modules (
     resolution_mp DECIMAL(5,2),
     aperture DECIMAL(4,2),
     normal_video_max VARCHAR(50),
+    normal_video_max_2 VARCHAR(50) NULL, -- Segunda opción (ej: 8K @ 30fps)
     has_log TINYINT(1) DEFAULT 0,
     log_resolution VARCHAR(50),
     log_fps INT,
+    log_resolution_2 VARCHAR(50) NULL,
+    log_fps_2 INT NULL,
     has_opengate TINYINT(1) DEFAULT 0,
     opengate_resolution VARCHAR(50),
     opengate_fps INT,
+    opengate_resolution_2 VARCHAR(50) NULL,
+    opengate_fps_2 INT NULL,
     has_opengate_log TINYINT(1) DEFAULT 0,
     opengate_log_resolution VARCHAR(50),
     opengate_log_fps INT,
+    opengate_log_resolution_2 VARCHAR(50) NULL,
+    opengate_log_fps_2 INT NULL,
     FOREIGN KEY (phone_characteristic_id) REFERENCES phone_characteristics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
