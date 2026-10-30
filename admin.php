@@ -171,11 +171,20 @@ foreach ($regiones as $clave => $info) {
     $regiones_js[] = ['clave' => $clave, 'col' => $info['col'], 'etiqueta' => $info['etiqueta'], 'moneda' => $info['moneda']];
 }
 
+$monedas_js = [];
+foreach (monedas_disponibles() as $codigo_moneda => $datos_moneda) {
+    $monedas_js[] = ['codigo' => $codigo_moneda, 'nombre' => $datos_moneda['nombre']];
+}
+
 $datos_admin = [
     'versiones'       => array_map('versionParaForm', $ficha['storage'] ?? []),
     'camaraPrincipal' => !empty($ficha['main_cam']) ? camaraParaForm($ficha['main_cam']) : null,
     'camarasAux'      => array_map('camaraParaForm', $ficha['aux_cams'] ?? []),
-    'tiposCamaraAux'  => ['selfie', 'selfie bajo pantalla', 'ultra gran angular', 'teleobjetivo periscópico', 'teleobjetivo telescópico', 'Macro', 'Lidar', 'ToF 3d', 'Infrarojos'],
+    'tiposCamaraAux'  => tipos_camara_auxiliar(),
+    'tiposSinVideo'   => tipos_camara_sin_video(),
+    'monedas'         => $monedas_js,
+    'opcionesSim'     => opciones_sim(),
+    'simActual'       => ($modo_admin === 'crear') ? '' : (string)($ficha['conn']['sim_config'] ?? ''),
     'regiones'        => $regiones_js,
     'moviles'         => $moviles_js,
     'variantes'       => $variantes_js,
@@ -217,6 +226,8 @@ require __DIR__ . '/includes/header.php';
     <?= datalist('datalist_wifi', $list_wifi) ?>
     <?= datalist('datalist_bt', $list_bt) ?>
     <?= datalist('datalist_ips', $list_ips) ?>
+    <?= datalist('datalist_protection', $list_sug_proteccion) ?>
+    <?= datalist('datalist_battery_type', $list_sug_bateria) ?>
     <?= datalist('datalist_marco', $list_sug_marco) ?>
     <?= datalist('datalist_trasera', $list_sug_trasera) ?>
 

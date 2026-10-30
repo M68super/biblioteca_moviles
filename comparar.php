@@ -217,7 +217,7 @@ require __DIR__ . '/includes/header.php';
                         }
                         $filas_datos[] = ['Gama', 'Gama', $vals, false, true, false, $nums];
 
-                        // 4. Precio de Lanzamiento (Global/UE en €; si no hay, la primera región disponible)
+                        // 4. Precio (desde): el más barato entre las versiones de memoria (Global/UE en €; si no hay, la primera región disponible)
                         $otras_regiones = [
                             'price_china'  => ['China', 'CNY'],
                             'price_usa'    => ['EE. UU.', 'USD'],
@@ -228,18 +228,28 @@ require __DIR__ . '/includes/header.php';
                             'price_taiwan' => ['Taiwán', 'TWD'],
                             'price_russia' => ['Rusia', 'RUB'],
                         ];
+                        // Precio más bajo de una región entre todas las versiones del móvil (null si no hay ninguno)
+                        $precio_minimo = function ($versiones, $columna) {
+                            $precios = [];
+                            foreach ($versiones as $sv) {
+                                if (!empty($sv[$columna]) && (float)$sv[$columna] > 0) $precios[] = (float)$sv[$columna];
+                            }
+                            return $precios ? min($precios) : null;
+                        };
                         $vals = []; $nums = [];
                         foreach ($moviles_comparacion as $m) {
-                            $meta = $m['meta'];
                             $texto = 'N/D'; $num = null;
-                            if (!empty($meta['price_global']) && (float)$meta['price_global'] > 0) {
-                                $texto = formato_precio($meta['price_global'], '€'); $num = (float)$meta['price_global'];
-                            } elseif (!empty($meta['price_ue']) && (float)$meta['price_ue'] > 0) {
-                                $texto = formato_precio($meta['price_ue'], '€'); $num = (float)$meta['price_ue'];
+                            $p_global = $precio_minimo($m['storage_versions'], 'price_global');
+                            $p_ue = $precio_minimo($m['storage_versions'], 'price_ue');
+                            if ($p_global !== null) {
+                                $texto = 'Desde ' . formato_precio($p_global, '€'); $num = $p_global;
+                            } elseif ($p_ue !== null) {
+                                $texto = 'Desde ' . formato_precio($p_ue, '€'); $num = $p_ue;
                             } else {
                                 foreach ($otras_regiones as $col => $datos_region) {
-                                    if (!empty($meta[$col]) && (float)$meta[$col] > 0) {
-                                        $texto = formato_precio($meta[$col], $datos_region[1]) . ' (' . $datos_region[0] . ')';
+                                    $p_otra = $precio_minimo($m['storage_versions'], $col);
+                                    if ($p_otra !== null) {
+                                        $texto = 'Desde ' . formato_precio($p_otra, $datos_region[1]) . ' (' . $datos_region[0] . ')';
                                         break; // otra moneda: se muestra pero no entra en el degradado
                                     }
                                 }
@@ -247,7 +257,7 @@ require __DIR__ . '/includes/header.php';
                             $vals[] = $texto;
                             $nums[] = $num;
                         }
-                        $filas_datos[] = ['Precio de Lanzamiento', 'Precio', $vals, false, true, false, $nums];
+                        $filas_datos[] = ['Precio (desde)', 'Precio', $vals, false, true, false, $nums];
 
                         // 5. Certificación IP
                         $vals = []; $nums = [];
@@ -315,7 +325,7 @@ require __DIR__ . '/includes/header.php';
                         foreach ($moviles_comparacion as $m) {
                             $capacidades = []; $tecnologias = []; $mayor = null;
                             foreach ($m['storage_versions'] as $sv) {
-                                $cap = $sv['ram_gb'] !== null ? (string)$sv['ram_gb'] : trim((string)($sv['ram_capacities_gb'] ?? ''));
+                                $cap = $sv['ram_gb'] !== null ? (string)$sv['ram_gb'] : '';
                                 if ($cap !== '' && !in_array($cap, $capacidades, true)) $capacidades[] = $cap;
                                 if (!empty($sv['ram_technology']) && !in_array($sv['ram_technology'], $tecnologias, true)) $tecnologias[] = $sv['ram_technology'];
                                 $mx = max_csv($cap);
@@ -331,7 +341,7 @@ require __DIR__ . '/includes/header.php';
                         foreach ($moviles_comparacion as $m) {
                             $capacidades = []; $tecnologias = []; $mayor = null;
                             foreach ($m['storage_versions'] as $sv) {
-                                $cap = $sv['storage_gb'] !== null ? (string)$sv['storage_gb'] : trim((string)($sv['storage_capacities_gb'] ?? ''));
+                                $cap = $sv['storage_gb'] !== null ? (string)$sv['storage_gb'] : '';
                                 if ($cap !== '' && !in_array($cap, $capacidades, true)) $capacidades[] = $cap;
                                 if (!empty($sv['storage_technology']) && !in_array($sv['storage_technology'], $tecnologias, true)) $tecnologias[] = $sv['storage_technology'];
                                 $mx = max_csv($cap);
@@ -372,7 +382,11 @@ require __DIR__ . '/includes/header.php';
                             $vals = [];
                             foreach ($moviles_comparacion as $m) {
                                 $clave = (string)($m['meta']['priority'] ?? 'ninguna');
-                                $vals[] = $lista_prioridades[$clave] ?? $lista_prioridades['ninguna'];
+                                $texto_prioridad = $lista_prioridades[$clave] ?? $lista_prioridades['ninguna'];
+                                if ($clave === 'obtenido' && !empty($m['meta']['owned_colors'])) {
+                                    $texto_prioridad .= ' (' . $m['meta']['owned_colors'] . ')';
+                                }
+                                $vals[] = $texto_prioridad;
                             }
                             $filas_datos[] = ['Prioridad de compra (solo admin)', 'Prioridad', $vals, false, false, false, []];
                         }

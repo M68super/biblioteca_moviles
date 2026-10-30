@@ -330,34 +330,19 @@ require __DIR__ . '/includes/header.php';
                 </ul>
             </section>
 
-            <!-- Memoria RAM y Almacenamiento (cada versión con sus precios) -->
+            <!-- Memoria RAM y Almacenamiento (una línea por versión) -->
             <section class="tarjeta">
                 <h2>💾 Memoria y Almacenamiento</h2>
                 <ul class="lista-specs-detallada">
                     <?php if (!empty($storage_versions)): ?>
                         <?php foreach ($storage_versions as $i => $sv): ?>
-                            <?php
-                            // Si la versión aún no se ha convertido a números, se muestra el texto antiguo
-                            $ram_txt = $sv['ram_gb'] !== null ? (string)$sv['ram_gb'] : trim((string)($sv['ram_capacities_gb'] ?? ''));
-                            $sto_txt = $sv['storage_gb'] !== null ? (string)$sv['storage_gb'] : trim((string)($sv['storage_capacities_gb'] ?? ''));
-                            $precios_version = [];
-                            foreach ($regiones_precio as $nombre_region => $datos_region) {
-                                $p_ver = $sv[$datos_region[0]] ?? null;
-                                if ($p_ver !== null && (float)$p_ver > 0) {
-                                    $precios_version[] = escapar($nombre_region) . ': <strong>' . formato_precio($p_ver, $datos_region[1]) . '</strong>';
-                                }
-                            }
-                            ?>
-                            <li class="li-version">
+                            <li>
                                 <span>Versión <?= $i + 1 ?>:</span>
                                 <strong>
-                                    <?= escapar($ram_txt) ?> GB<?= !empty($sv['ram_technology']) ? ' (' . escapar($sv['ram_technology']) . ')' : '' ?>
-                                    / <?= escapar($sto_txt) ?> GB<?= !empty($sv['storage_technology']) ? ' (' . escapar($sv['storage_technology']) . ')' : '' ?>
+                                    <?= $sv['ram_gb'] !== null ? escapar($sv['ram_gb']) : '?' ?> GB<?= !empty($sv['ram_technology']) ? ' (' . escapar($sv['ram_technology']) . ')' : '' ?>
+                                    / <?= $sv['storage_gb'] !== null ? escapar($sv['storage_gb']) : '?' ?> GB<?= !empty($sv['storage_technology']) ? ' (' . escapar($sv['storage_technology']) . ')' : '' ?>
                                 </strong>
                             </li>
-                            <?php if (!empty($precios_version)): ?>
-                                <li class="li-precios-version"><?= implode(' · ', $precios_version) ?></li>
-                            <?php endif; ?>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <li><span>Versiones:</span> <strong>N/D</strong></li>
@@ -373,6 +358,8 @@ require __DIR__ . '/includes/header.php';
                     <li><span>Tecnología:</span> <strong><?= mostrar($scr['technology'] ?? null) ?></strong></li>
                     <li><span>Resolución:</span> <strong><?= mostrar($scr['resolution'] ?? null) ?></strong></li>
                     <li><span>Refresco:</span> <strong><?= mostrar_num($scr['refresh_rate_hz'] ?? null, ' Hz') ?></strong></li>
+                    <li><span>Brillo máximo:</span> <strong><?= mostrar_num($scr['max_brightness_nits'] ?? null, ' nits') ?></strong></li>
+                    <li><span>Protección:</span> <strong><?= mostrar($scr['protection'] ?? null) ?></strong></li>
                 </ul>
             </section>
 
@@ -381,6 +368,7 @@ require __DIR__ . '/includes/header.php';
                 <h2>🔋 Batería y Autonomía</h2>
                 <ul class="lista-specs-detallada">
                     <li><span>Capacidad:</span> <strong><?= mostrar_num($bat['capacity_mah'] ?? null, ' mAh') ?></strong></li>
+                    <li><span>Tipo de batería:</span> <strong><?= mostrar($bat['battery_type'] ?? null) ?></strong></li>
                     <li><span>Carga Cable:</span> <strong><?= mostrar_num($bat['wired_charging_w'] ?? null, 'W') ?></strong></li>
                     <li><span>Carga Inalámbrica:</span> <strong><?= $bat ? potencia($bat['wireless_charging_w'] ?? null) : 'N/D' ?></strong></li>
                     <li><span>Ciclos (80% salud):</span> <strong><?= mostrar_num($bat['assured_cycles_80_health'] ?? null, ' ciclos') ?></strong></li>
@@ -396,33 +384,53 @@ require __DIR__ . '/includes/header.php';
                     <li><span>Wi-Fi:</span> <strong><?= mostrar($conn['wifi_version'] ?? null) ?></strong></li>
                     <li><span>Bluetooth:</span> <strong><?= mostrar($conn['bluetooth_version'] ?? null) ?></strong></li>
                     <li><span>Android Auto:</span> <strong><?= $conn ? (!empty($conn['android_auto']) ? 'Compatible' : 'No') : 'N/D' ?></strong></li>
+                    <li><span>Tarjeta SIM:</span> <strong><?= mostrar($conn['sim_config'] ?? null) ?></strong></li>
+                    <li><span>MicroSD:</span> <strong><?= $conn ? (!empty($conn['microsd']) ? 'Sí' : 'No') : 'N/D' ?></strong></li>
                     <li><span>NFC / eSIM:</span> <strong><?= $conn ? (!empty($conn['nfc']) ? 'Sí' : 'No') . ' / ' . (!empty($conn['esim_support']) ? 'Compatible' : 'No') : 'N/D' ?></strong></li>
                 </ul>
             </section>
 
-            <!-- Precios Regionales (solo se listan las regiones con precio) -->
+            <!-- Precios por versión de memoria (solo se listan las regiones con precio) -->
             <section class="tarjeta">
-                <h2>💶 Precios Regionales</h2>
-                <ul class="lista-specs-detallada">
-                    <?php $hay_precios = false; ?>
-                    <?php foreach ($regiones_precio as $nombre_region => $datos_region): ?>
-                        <?php $precio = $meta[$datos_region[0]] ?? null; ?>
-                        <?php if ($precio !== null && (float)$precio > 0): $hay_precios = true; ?>
-                            <li><span><?= escapar($nombre_region) ?>:</span> <strong><?= formato_precio($precio, $datos_region[1]) ?></strong></li>
+                <h2>💶 Precios por versión</h2>
+                <?php $hay_precios = false; ?>
+                <?php foreach ($storage_versions as $sv): ?>
+                    <?php
+                    $lineas_precio = [];
+                    foreach ($regiones_precio as $nombre_region => $datos_region) {
+                        $precio_version = $sv[$datos_region[0]] ?? null;
+                        if ($precio_version !== null && (float)$precio_version > 0) {
+                            $lineas_precio[] = [$nombre_region, formato_precio($precio_version, $datos_region[1])];
+                        }
+                    }
+                    $precio_operadora = $sv['price_carrier'] ?? null;
+                    $tiene_operadora = ($precio_operadora !== null && (float)$precio_operadora > 0);
+                    $comentario_operadora = trim((string)($sv['carrier_details'] ?? ''));
+                    if (empty($lineas_precio) && !$tiene_operadora && $comentario_operadora === '') continue;
+                    $hay_precios = true;
+                    ?>
+                    <div class="version-precios">
+                        <h3 class="version-precios-titulo"><?= $sv['ram_gb'] !== null ? escapar($sv['ram_gb']) : '?' ?> GB + <?= $sv['storage_gb'] !== null ? escapar($sv['storage_gb']) : '?' ?> GB</h3>
+                        <ul class="lista-specs-detallada">
+                            <?php foreach ($lineas_precio as $linea): ?>
+                                <li><span><?= escapar($linea[0]) ?>:</span> <strong><?= $linea[1] ?></strong></li>
+                            <?php endforeach; ?>
+                            <?php if ($tiene_operadora): ?>
+                                <li>
+                                    <span>📡 Exclusivo operadora:</span>
+                                    <strong><?= formato_precio($precio_operadora, simbolo_moneda(!empty($sv['carrier_currency']) ? $sv['carrier_currency'] : 'EUR')) ?></strong>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                        <?php if ($comentario_operadora !== ''): ?>
+                            <p class="carrier-detalles"><strong>Operadora:</strong> <?= nl2br(escapar($comentario_operadora)) ?></p>
                         <?php endif; ?>
-                    <?php endforeach; ?>
-                    <?php if (!empty($meta['price_carrier']) && (float)$meta['price_carrier'] > 0): $hay_precios = true; ?>
-                        <li>
-                            <span>Operadora:</span>
-                            <strong><?= formato_precio($meta['price_carrier'], !empty($meta['carrier_currency']) ? $meta['carrier_currency'] : 'EUR') ?></strong>
-                        </li>
-                    <?php endif; ?>
-                    <?php if (!$hay_precios): ?>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (!$hay_precios): ?>
+                    <ul class="lista-specs-detallada">
                         <li><span>Precios:</span> <strong>No especificados</strong></li>
-                    <?php endif; ?>
-                </ul>
-                <?php if (!empty($meta['carrier_details'])): ?>
-                    <p class="carrier-detalles"><strong>Detalles de la operadora:</strong><br><?= nl2br(escapar($meta['carrier_details'])) ?></p>
+                    </ul>
                 <?php endif; ?>
             </section>
 
@@ -431,6 +439,9 @@ require __DIR__ . '/includes/header.php';
                 <section class="tarjeta tarjeta-prioridad">
                     <h2>🎯 Prioridad de compra</h2>
                     <p class="prioridad-etiqueta prioridad-<?= escapar($clave_prioridad) ?>"><?= escapar($lista_prioridades[$clave_prioridad]) ?></p>
+                    <?php if ($clave_prioridad === 'obtenido' && !empty($meta['owned_colors'])): ?>
+                        <p class="colores-obtenidos"><strong>🎨 Colores que tengo:</strong> <?= escapar($meta['owned_colors']) ?></p>
+                    <?php endif; ?>
                     <p class="aviso-solo-admin">🔒 Solo visible para el administrador</p>
                 </section>
             <?php endif; ?>
@@ -442,17 +453,23 @@ require __DIR__ . '/includes/header.php';
             <?php if (!empty($cams)): ?>
                 <div class="cams-grid-container">
                     <?php foreach ($cams as $c): ?>
+                        <?php
+                        $tipo_camara = canonizar_tipo_camara($c['camera_type']);
+                        $camara_con_video = ($tipo_camara === 'Principal') || tipo_camara_tiene_video($tipo_camara);
+                        ?>
                         <div class="cam-module-card">
-                            <h3><?= escapar($c['camera_type']) ?></h3>
+                            <h3><?= escapar($tipo_camara) ?></h3>
                             <p><strong>Sensor:</strong> <?= mostrar($c['sensor_name'] ?? null) ?><?= !empty($c['sensor_size']) ? ' (' . escapar($c['sensor_size']) . ')' : '' ?></p>
                             <p><strong>Resolución:</strong> <?= mostrar_num($c['resolution_mp'] ?? null, ' MP') ?></p>
                             <p><strong>Apertura:</strong> <?= !empty($c['aperture']) ? 'f/' . escapar(num_limpio($c['aperture'])) : 'N/D' ?></p>
+                            <?php if ($camara_con_video): ?>
                             <hr class="cam-divider">
                             <?php $video_normal = implode(' / ', array_filter([$c['normal_video_max'] ?? '', $c['normal_video_max_2'] ?? ''], function ($t) { return $t !== null && $t !== ''; })); ?>
                             <p class="cam-spec-text"><strong>Vídeo Normal:</strong> <?= mostrar($video_normal !== '' ? $video_normal : null) ?></p>
                             <p class="cam-spec-text"><strong>LOG:</strong> <?= formato_video($c['has_log'] ?? 0, $c['log_resolution'] ?? '', $c['log_fps'] ?? '', $c['log_resolution_2'] ?? '', $c['log_fps_2'] ?? '') ?></p>
                             <p class="cam-spec-text"><strong>OpenGate:</strong> <?= formato_video($c['has_opengate'] ?? 0, $c['opengate_resolution'] ?? '', $c['opengate_fps'] ?? '', $c['opengate_resolution_2'] ?? '', $c['opengate_fps_2'] ?? '') ?></p>
                             <p class="cam-spec-text"><strong>OpenGate + LOG:</strong> <?= formato_video($c['has_opengate_log'] ?? 0, $c['opengate_log_resolution'] ?? '', $c['opengate_log_fps'] ?? '', $c['opengate_log_resolution_2'] ?? '', $c['opengate_log_fps_2'] ?? '') ?></p>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>

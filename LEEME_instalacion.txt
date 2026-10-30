@@ -1,44 +1,47 @@
-CATÁLOGO DE MÓVILES · ACTUALIZACIÓN 2026-10-23
+CATÁLOGO DE MÓVILES · ACTUALIZACIÓN 2026-10-24
 ================================================
 
-ANTES DE EMPEZAR
-  1. Haz una copia de seguridad de la base de datos (phpMyAdmin > Exportar) y de la carpeta del proyecto
-     (o un commit en Git).
+Elige UNO de los dos caminos:
 
-1. COPIAR ARCHIVOS
-  Copia todo el contenido de esta carpeta dentro de tu proyecto, respetando las subcarpetas
-  (config, includes, css, js, uploads, sql). Después puedes borrar los archivos que ya no se usan:
-    - css/estilos.css y css/estilos-viejo.css     (ahora hay una hoja general.css y una por página)
-    - css/chart.js                                  (ahora está en js/chart.js)
-    - index-viejo.php, detalles-viejo.php, *_1.php
-  Si tu proyecto está en una subcarpeta de htdocs, no hace falta cambiar nada.
+CAMINO A · CONSERVAR LOS DATOS QUE YA TIENES
+---------------------------------------------
+  1. Copia de seguridad: phpMyAdmin > Exportar la base phone_catalog, y copia la carpeta del proyecto
+     (o haz un commit en Git).
+  2. Copia el contenido de esta carpeta dentro de tu proyecto, respetando las subcarpetas
+     (config, includes, css, js, uploads, sql) y sobrescribiendo los archivos que ya existan.
+  3. En phpMyAdmin (base phone_catalog) ejecuta sql/migracion_2026-10-24.sql, UNA sola vez.
+     Si es la primera vez que actualizas desde una versión anterior, ejecuta antes, por este orden y solo los
+     que no hayas ejecutado ya:
+        sql/migracion_notas.sql
+        sql/migracion_bateria_video_auto.sql
+        sql/migracion_2026-10-23.sql
+  4. Entra en el panel de administración y comprueba tus móviles:
+       - Los precios que estaban a nivel de móvil se han copiado a la PRIMERA versión de memoria de cada uno.
+         Revísalos en Editar > punto 4 y repártelos entre las versiones.
+       - Si venías de una versión anterior a 2026-10-23, abre migrar_memoria.php (como administrador) para convertir
+         la memoria a números y bórralo después.
+  5. Opcional, cuando todo se vea bien: sql/limpieza_columnas_antiguas.sql elimina columnas que ya no se usan.
+     Opcional: sql/migracion_indices_unicos.sql (índices anti-duplicados; ejecuta primero sus consultas de diagnóstico).
 
-2. BASE DE DATOS (phpMyAdmin, base phone_catalog). Ejecuta, por este orden, SOLO los que no hayas ejecutado ya:
-    sql/migracion_notas.sql                  (6 notas del hexágono + comentario personal)
-    sql/migracion_bateria_video_auto.sql     (ciclos de batería, Android Auto, 2ª opción de vídeo)
-    sql/migracion_2026-10-23.sql             (SO por móvil, variantes, prioridad, memoria numérica y precios por versión)
-  Si falta alguna, la web te mostrará un aviso indicando qué columnas faltan.
+CAMINO B · EMPEZAR DE CERO (¡BORRA TODOS LOS DATOS!)
+-----------------------------------------------------
+  1. Copia el contenido de esta carpeta dentro de tu proyecto.
+  2. En phpMyAdmin > pestaña SQL, pega TODO el contenido de sql/estructura_2026-10-24.sql y ejecútalo.
+     Crea la base de datos phone_catalog completa, ya con la estructura final (no hace falta ninguna migración).
+  3. Abre crear_admin.php en el navegador para crear el administrador y bórralo después.
 
-3. PRIMER ADMINISTRADOR (ya no existe el acceso admin / admin)
-  Abre en el navegador:  http://localhost/TU_CARPETA/crear_admin.php
-  Elige usuario y contraseña (mínimo 10 caracteres). Después BORRA el archivo crear_admin.php.
-  Los usuarios normales que ya existieran sin contraseña tendrán que volver a registrarse.
+EN AMBOS CASOS
+--------------
+  - Subida de imágenes: en XAMPP, php.ini (Config > PHP): upload_max_filesize = 8M y post_max_size = 16M. Reinicia Apache.
+    Las fotos se guardan en uploads/moviles/ (la carpeta lleva un .htaccess que impide ejecutar código dentro).
+  - Si falta alguna migración, la web muestra un aviso (al administrador) con las columnas que faltan.
+  - Puedes borrar archivos antiguos: css/estilos.css, css/estilos-viejo.css, index-viejo.php, detalles-viejo.php, *_1.php.
 
-4. CONVERTIR LA MEMORIA A NÚMEROS (solo si tenías móviles con versiones de memoria ya guardadas)
-  Inicia sesión como administrador y abre:  migrar_memoria.php
-  Revisa la propuesta y pulsa "Convertir ahora". Luego borra el archivo migrar_memoria.php.
-  Después, en Panel Admin > Editar, revisa cada móvil y añade el precio de cada versión.
-
-5. ÍNDICES ÚNICOS (evitan duplicados) - opcional pero recomendado
-  Ejecuta primero las consultas de diagnóstico de sql/migracion_indices_unicos.sql: deben devolver 0 filas.
-  Si no devuelven nada, ejecuta los ALTER TABLE del mismo archivo.
-
-6. SUBIDA DE IMÁGENES
-  Las fotos se guardan en uploads/moviles/. En XAMPP revisa php.ini (Config > PHP):
-    upload_max_filesize = 8M
-    post_max_size = 16M
-  y reinicia Apache. La carpeta uploads/ lleva un .htaccess que impide ejecutar código dentro de ella.
-
-SI ALGO FALLA
-  - sql/estructura_2026-10-23.sql crea la base de datos completa desde cero (¡borra los datos!).
-  - Mira la sección de errores de Apache (xampp/apache/logs/error.log) y de PHP (xampp/php/logs/php_error_log).
+LO NUEVO DE ESTA VERSIÓN
+------------------------
+  - Cada versión de memoria admite precio "Exclusivo operadora" con moneda y comentario.
+  - Los precios ya solo se escriben en las versiones de memoria (se quitó el punto "Precios Regionales" del panel);
+    el catálogo muestra el precio más barato ("Desde ...") y la ficha una tarjeta "Precios por versión".
+  - Pantalla: brillo máximo y protección. Batería: tipo. Conectividad: MicroSD y tarjeta SIM.
+  - Cámaras: lista de tipos ampliada y los sensores que no graban vídeo no muestran el apartado de vídeo.
+  - Prioridad "Obtenido": caja para escribir los colores que ya tienes comprados.

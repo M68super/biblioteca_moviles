@@ -41,13 +41,14 @@ function camaraParaForm(array $c) {
 
 // Convierte una versión de memoria (fila de la base de datos) en el formato del formulario (JavaScript)
 function versionParaForm(array $sv) {
-    $ram = $sv['ram_gb'] !== null ? (string)$sv['ram_gb'] : trim((string)($sv['ram_capacities_gb'] ?? ''));
-    $almacenamiento = $sv['storage_gb'] !== null ? (string)$sv['storage_gb'] : trim((string)($sv['storage_capacities_gb'] ?? ''));
     $datos = [
-        'ram_gb'       => $ram,
-        'ram_tech'     => (string)($sv['ram_technology'] ?? ''),
-        'storage_gb'   => $almacenamiento,
-        'storage_tech' => (string)($sv['storage_technology'] ?? ''),
+        'ram_gb'           => $sv['ram_gb'] !== null ? (string)$sv['ram_gb'] : '',
+        'ram_tech'         => (string)($sv['ram_technology'] ?? ''),
+        'storage_gb'       => $sv['storage_gb'] !== null ? (string)$sv['storage_gb'] : '',
+        'storage_tech'     => (string)($sv['storage_technology'] ?? ''),
+        'price_carrier'    => num_limpio($sv['price_carrier'] ?? ''),
+        'carrier_currency' => (string)($sv['carrier_currency'] ?? ''),
+        'carrier_details'  => (string)($sv['carrier_details'] ?? ''),
     ];
     foreach (regiones_precio() as $info) {
         $datos[$info['col']] = num_limpio($sv[$info['col']] ?? '');
@@ -172,6 +173,14 @@ function texto_video($resolucion, $fps) {
  * Cada tipo de vídeo admite dos opciones de resolución / fps (ej: 4K 120fps y 8K 30fps).
  */
 function insertarCamara(PDO $conexion, $char_id, $tipo, array $d) {
+    $tipo = canonizar_tipo_camara($tipo);
+    // Los sensores que no graban vídeo (ToF, LiDAR, infrarrojos...) no guardan ningún dato de vídeo
+    $con_video = ($tipo === 'Principal') || tipo_camara_tiene_video($tipo);
+    if (!$con_video) {
+        foreach (['video_res', 'video_fps', 'video_res2', 'video_fps2', 'has_log', 'has_og', 'has_ogl'] as $campo_video) {
+            unset($d[$campo_video]);
+        }
+    }
     $has_log = !empty($d['has_log']) ? 1 : 0;
     $has_og  = !empty($d['has_og']) ? 1 : 0;
     $has_ogl = !empty($d['has_ogl']) ? 1 : 0;
@@ -238,8 +247,8 @@ function gestionarCamaras(PDO $conexion, $char_id, array $post_data) {
 }
 
 /**
- * Versiones de memoria: una fila por combinación concreta (ej: 12 GB + 256 GB), cada una con sus precios por región.
- * Se escriben también las columnas antiguas (ram_capacities_gb / storage_capacities_gb) por compatibilidad.
+ * Versiones de memoria: una fila por combinación concreta (ej: 12 GB + 256 GB), cada una con sus precios por región
+ * y, opcionalmente, un precio exclusivo de operadora con su moneda y un comentario explicativo.
  */
 function gestionarVersionesMemoria(PDO $conexion, $char_id, array $post_data) {
     $conexion->prepare("DELETE FROM characteristics_storage_versions WHERE phone_characteristic_id = ?")->execute([$char_id]);
@@ -255,17 +264,24 @@ function gestionarVersionesMemoria(PDO $conexion, $char_id, array $post_data) {
 
         $datos = [
             'phone_characteristic_id' => $char_id,
-            'ram_capacities_gb'       => (string)$ram,
-            'ram_technology'          => trim((string)($sv['ram_tech'] ?? '')),
-            'storage_capacities_gb'   => (string)$almacenamiento,
-            'storage_technology'      => trim((string)($sv['storage_tech'] ?? '')),
             'ram_gb'                  => $ram,
+            'ram_technology'          => trim((string)($sv['ram_tech'] ?? '')),
             'storage_gb'              => $almacenamiento,
+            'storage_technology'      => trim((string)($sv['storage_tech'] ?? '')),
         ];
         foreach (regiones_precio() as $info) {
             $precio = dec_o_null($sv[$info['col']] ?? '');
             $datos[$info['col']] = ($precio !== null && $precio > 0) ? $precio : null;
         }
+
+        // Precio exclusivo de operadora: la moneda debe ser una de la lista (si no, euros)
+        $precio_operadora = dec_o_null($sv['price_carrier'] ?? '');
+        $precio_operadora = ($precio_operadora !== null && $precio_operadora > 0) ? $precio_operadora : null;
+        $moneda = strtoupper(trim((string)($sv['carrier_currency'] ?? '')));
+        if (!array_key_exists($moneda, monedas_disponibles())) $moneda = 'EUR';
+        $datos['price_carrier']    = $precio_operadora;
+        $datos['carrier_currency'] = ($precio_operadora !== null) ? $moneda : null;
+        $datos['carrier_details']  = texto_o_null($sv['carrier_details'] ?? '');
 
         $columnas = array_keys($datos);
         $marcas = implode(', ', array_fill(0, count($columnas), '?'));
@@ -430,13 +446,16 @@ function guardarMovil(PDO $conexion, $phone_id, array $p, $imagen_nueva = null) 
 
     $prioridad = (string)($p['priority'] ?? 'ninguna');
     if (!array_key_exists($prioridad, prioridades())) $prioridad = 'ninguna';
+    // Los colores que ya tengo comprados solo se guardan si la prioridad es "Obtenido"
+    $colores_obtenidos = ($prioridad === 'obtenido') ? texto_o_null($p['owned_colors'] ?? '') : null;
 
-    // --- Metadatos: dimensiones, IP, materiales, valoración y precios regionales ---
+    // --- Metadatos: dimensiones, IP, materiales y valoración (los precios están en cada versión de memoria) ---
     $datos_meta = array_merge([
         'score_avg'        => $score_avg,
     ], $notas, [
         'personal_comment' => texto_o_null($p['personal_comment'] ?? ''),
         'priority'         => $prioridad,
+        'owned_colors'     => $colores_obtenidos,
         'ip_rating'        => texto_o_null($p['ip_rating'] ?? ''),
         'frame_material'   => texto_o_null($p['frame_material'] ?? ''),
         'back_material'    => texto_o_null($p['back_material'] ?? ''),
@@ -445,13 +464,6 @@ function guardarMovil(PDO $conexion, $phone_id, array $p, $imagen_nueva = null) 
         'thickness_mm'     => dec_o_null($p['thickness_mm'] ?? ''),
         'weight_g'         => int_o_null($p['weight_g'] ?? ''),
     ]);
-    foreach (regiones_precio() as $info) {
-        $datos_meta[$info['col']] = dec_o_null($p[$info['col']] ?? '');
-    }
-    $datos_meta['price_carrier']    = dec_o_null($p['price_carrier'] ?? '');
-    $datos_meta['carrier_currency'] = texto_o_null($p['carrier_currency'] ?? '') ?? 'EUR';
-    $datos_meta['carrier_details']  = texto_o_null($p['carrier_details'] ?? '');
-
     // Imagen: si se sube una nueva sustituye a la anterior; si se marca "quitar" se elimina; si no, se deja como está
     $imagen_a_borrar = null;
     if ($imagen_nueva !== null) {
@@ -492,12 +504,15 @@ function guardarMovil(PDO $conexion, $phone_id, array $p, $imagen_nueva = null) 
         'inches'          => dec_o_null($p['inches'] ?? ''),
         'resolution'      => texto_o_null($p['resolution'] ?? ''),
         'refresh_rate_hz' => int_o_null($p['hz'] ?? ''),
+        'max_brightness_nits' => int_o_null($p['brightness'] ?? ''),
         'technology'      => texto_o_null($p['screen_tech'] ?? ''),
+        'protection'      => texto_o_null($p['protection'] ?? ''),
     ]);
 
     // --- Batería y carga ---
     guardarFila($conexion, 'characteristics_battery', 'phone_characteristic_id', $char_id, [
         'capacity_mah'                => int_o_null($p['mah'] ?? ''),
+        'battery_type'                => texto_o_null($p['battery_type'] ?? ''),
         'wired_charging_w'            => int_o_null($p['wired_w'] ?? ''),
         'wireless_charging_w'         => int_o_null($p['wireless_w'] ?? ''),
         'reverse_wired_charging_w'    => int_o_null($p['rev_wired_w'] ?? ''),
@@ -505,7 +520,12 @@ function guardarMovil(PDO $conexion, $phone_id, array $p, $imagen_nueva = null) 
         'assured_cycles_80_health'    => int_o_null($p['cycles_80'] ?? ''),
     ]);
 
-    // --- Conectividad ---
+    // --- Conectividad (la tarjeta SIM solo admite opciones de la lista y sin MicroSD no puede llevar opciones con MicroSD) ---
+    $tiene_microsd = isset($p['microsd']) ? 1 : 0;
+    $config_sim = trim((string)($p['sim_config'] ?? ''));
+    if (!in_array($config_sim, opciones_sim(), true) || (!$tiene_microsd && sim_requiere_microsd($config_sim))) {
+        $config_sim = '';
+    }
     guardarFila($conexion, 'characteristics_connectivity', 'phone_characteristic_id', $char_id, [
         'mobile_network'    => texto_o_null($p['network'] ?? ''),
         'wifi_version'      => texto_o_null($p['wifi'] ?? ''),
@@ -513,6 +533,8 @@ function guardarMovil(PDO $conexion, $phone_id, array $p, $imagen_nueva = null) 
         'nfc'               => isset($p['nfc']) ? 1 : 0,
         'esim_support'      => isset($p['esim']) ? 1 : 0,
         'android_auto'      => isset($p['android_auto']) ? 1 : 0,
+        'microsd'           => $tiene_microsd,
+        'sim_config'        => texto_o_null($config_sim),
     ]);
 
     // --- Cámaras ---

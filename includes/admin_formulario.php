@@ -67,7 +67,7 @@
                         <details class="categoria-filtro">
                             <summary>4. Memoria RAM, Almacenamiento y Precios por Versión</summary>
                             <div class="categoria-contenido block-layout storage-block-container">
-                                <p class="ayuda-notas">Cada bloque es una versión concreta del móvil (por ejemplo 12 GB de RAM + 256 GB). Dentro de cada versión puedes poner su precio en cada región.</p>
+                                <p class="ayuda-notas">Cada bloque es una versión concreta del móvil (por ejemplo 12 GB de RAM + 256 GB). Dentro de cada versión puedes poner su precio en cada región y, si existe, su precio exclusivo de operadora.</p>
                                 <div id="storage-versions-container"></div>
                                 <button type="button" class="btn-add-aux" onclick="agregarVersionMemoria()">➕ Añadir versión de memoria</button>
                             </div>
@@ -80,7 +80,9 @@
                                 <div><label>Pulgadas:</label><input type="number" step="0.01" name="inches" value="<?= v('scr', 'inches') ?>"></div>
                                 <div><label>Resolución:</label><input type="text" name="resolution" value="<?= v('scr', 'resolution') ?>"></div>
                                 <div><label>Tasa de Refresco (Hz):</label><input type="number" name="hz" value="<?= v('scr', 'refresh_rate_hz', 120) ?>"></div>
+                                <div><label>Brillo máximo (nits):</label><input type="number" min="0" name="brightness" value="<?= v('scr', 'max_brightness_nits') ?>" placeholder="Ej: 3000"></div>
                                 <div><label>Tecnología de Pantalla:</label><input type="text" name="screen_tech" list="datalist_screen_tech" value="<?= v('scr', 'technology') ?>"></div>
+                                <div><label>Protección:</label><input type="text" name="protection" list="datalist_protection" value="<?= v('scr', 'protection') ?>" placeholder="Ej: Corning Gorilla Glass Victus"></div>
                             </div>
                         </details>
 
@@ -89,6 +91,7 @@
                             <summary>6. Batería y Tiempos de Carga</summary>
                             <div class="categoria-contenido">
                                 <div><label>Capacidad (mAh):</label><input type="number" name="mah" value="<?= v('bat', 'capacity_mah') ?>"></div>
+                                <div><label>Batería:</label><input type="text" name="battery_type" list="datalist_battery_type" value="<?= v('bat', 'battery_type') ?>" placeholder="Ej: Ion-Li, Si-C"></div>
                                 <div><label>Carga Cable (W):</label><input type="number" name="wired_w" value="<?= v('bat', 'wired_charging_w') ?>"></div>
                                 <div><label>Carga Inalámbrica (W):</label><input type="number" name="wireless_w" value="<?= v('bat', 'wireless_charging_w') ?>"></div>
                                 <div><label>Carga Inversa Cable (W):</label><input type="number" name="rev_wired_w" value="<?= v('bat', 'reverse_wired_charging_w') ?>"></div>
@@ -125,38 +128,9 @@
                             </div>
                         </details>
 
-                        <!-- Sección 9: Precios Regionales -->
+                        <!-- Sección 9: Conectividad -->
                         <details class="categoria-filtro">
-                            <summary>9. Precios Regionales (versión base)</summary>
-                            <div class="categoria-contenido block-layout">
-                                <p class="ayuda-notas">Precio de la versión base. El precio de cada versión de memoria se escribe en el punto 4.</p>
-                                <div class="precios-container">
-                                    <?php foreach ($regiones as $key => $info):
-                                        $val = $ficha['meta'][$info['col']] ?? '';
-                                        $activo = ($val !== '' && $val !== null && (float)$val > 0);
-                                    ?>
-                                    <div>
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" name="reg_<?= $key ?>" value="1" onchange="togglePriceInput(this, 'box-<?= $key ?>')" <?= $activo ? 'checked' : '' ?>> <?= escapar($info['etiqueta']) ?>
-                                        </label>
-                                        <div id="box-<?= $key ?>" class="price-input-box<?= $activo ? '' : ' oculto' ?>">
-                                            <input type="number" step="0.01" min="0" name="<?= $info['col'] ?>" value="<?= $activo ? escapar($val) : '' ?>" placeholder="Precio en <?= escapar($info['moneda']) ?>">
-                                        </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                <h4 class="subtitulo-admin">Precio con operadora</h4>
-                                <div class="operadora-grid">
-                                    <div><label>Precio operadora:</label><input type="number" step="0.01" min="0" name="price_carrier" value="<?= v('meta', 'price_carrier') ?>"></div>
-                                    <div><label>Moneda:</label><input type="text" name="carrier_currency" maxlength="10" value="<?= v('meta', 'carrier_currency', 'EUR') ?>"></div>
-                                    <div><label>Operadora y detalles:</label><textarea name="carrier_details" rows="5" placeholder="Nombre de la operadora, condiciones, permanencia..."><?= v('meta', 'carrier_details') ?></textarea></div>
-                                </div>
-                            </div>
-                        </details>
-
-                        <!-- Sección 10: Conectividad -->
-                        <details class="categoria-filtro">
-                            <summary>10. Conectividad y Redes</summary>
+                            <summary>9. Conectividad y Redes</summary>
                             <div class="categoria-contenido">
                                 <div><label>Red Móvil:</label><input type="text" name="network" list="datalist_network" value="<?= v('conn', 'mobile_network') ?>"></div>
                                 <div><label>Versión WiFi:</label><input type="text" name="wifi" list="datalist_wifi" value="<?= v('conn', 'wifi_version') ?>"></div>
@@ -170,12 +144,19 @@
                                 <div class="checkbox-wrapper">
                                     <label class="checkbox-label"><input type="checkbox" name="android_auto" value="1" <?= !empty($ficha['conn']['android_auto']) ? 'checked' : '' ?>> Android Auto</label>
                                 </div>
+                                <div class="checkbox-wrapper">
+                                    <label class="checkbox-label"><input type="checkbox" name="microsd" id="check-microsd" value="1" onchange="actualizarOpcionesSim()" <?= !empty($ficha['conn']['microsd']) ? 'checked' : '' ?>> MicroSD</label>
+                                </div>
+                                <div>
+                                    <label>Tarjeta SIM:</label>
+                                    <select name="sim_config" id="select-sim"></select>
+                                </div>
                             </div>
                         </details>
 
-                        <!-- Sección 11: Valoración personal (6 puntos del hexágono), prioridad, foto y comentario -->
+                        <!-- Sección 10: Valoración personal (6 puntos del hexágono), prioridad, foto y comentario -->
                         <details class="categoria-filtro">
-                            <summary>11. Valoración Personal (6 Puntos), Prioridad y Comentarios</summary>
+                            <summary>10. Valoración Personal (6 Puntos), Prioridad y Comentarios</summary>
                             <div class="categoria-contenido">
                                 <p class="full-width ayuda-notas">Estos 6 valores son los que dibuja el hexágono de la ficha del móvil. La nota media se calcula sola.</p>
                                 <?php
@@ -193,11 +174,15 @@
                                 <?php $prioridad_actual = ($modo_admin === 'crear') ? 'ninguna' : (string)($ficha['meta']['priority'] ?? 'ninguna'); ?>
                                 <div>
                                     <label>Prioridad de compra (solo la ves tú):</label>
-                                    <select name="priority">
+                                    <select name="priority" id="select-prioridad" onchange="mostrarColoresObtenidos()">
                                         <?php foreach (prioridades() as $clave_prioridad => $texto_prioridad): ?>
                                             <option value="<?= escapar($clave_prioridad) ?>"<?= $prioridad_actual === $clave_prioridad ? ' selected' : '' ?>><?= escapar($texto_prioridad) ?></option>
                                         <?php endforeach; ?>
                                     </select>
+                                </div>
+                                <div class="full-width<?= $prioridad_actual === 'obtenido' ? '' : ' oculto' ?>" id="caja-colores-obtenidos">
+                                    <label>Colores que ya tengo comprados:</label>
+                                    <input type="text" name="owned_colors" value="<?= v('meta', 'owned_colors') ?>" placeholder="Ej: Negro, Azul noche">
                                 </div>
                                 <div class="full-width">
                                     <label>Foto del móvil:</label>
@@ -218,9 +203,9 @@
                             </div>
                         </details>
 
-                        <!-- Sección 12: Variantes regionales (móviles asociados) -->
+                        <!-- Sección 11: Variantes regionales (móviles asociados) -->
                         <details class="categoria-filtro">
-                            <summary>12. Variantes Regionales</summary>
+                            <summary>11. Variantes Regionales</summary>
                             <div class="categoria-contenido block-layout">
                                 <p class="ayuda-notas">Asocia este móvil con otros que son el mismo dispositivo con mínimos cambios de hardware (versión global, China, India...). Todos los móviles asociados se verán entre sí en su ficha.</p>
                                 <div class="variantes-selector">

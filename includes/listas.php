@@ -29,6 +29,8 @@ function cargar_listas(PDO $conexion) {
             'storage_tech' => $col("SELECT DISTINCT storage_technology FROM characteristics_storage_versions WHERE storage_technology != '' ORDER BY storage_technology"),
             'hz'           => $col("SELECT DISTINCT refresh_rate_hz FROM characteristics_screen WHERE refresh_rate_hz IS NOT NULL ORDER BY refresh_rate_hz"),
             'screen_tech'  => $col("SELECT DISTINCT technology FROM characteristics_screen WHERE technology IS NOT NULL AND technology != '' ORDER BY technology"),
+            'protections'  => $col("SELECT DISTINCT protection FROM characteristics_screen WHERE protection IS NOT NULL AND protection != '' ORDER BY protection"),
+            'battery_types'=> $col("SELECT DISTINCT battery_type FROM characteristics_battery WHERE battery_type IS NOT NULL AND battery_type != '' ORDER BY battery_type"),
             'wired'        => $col("SELECT DISTINCT wired_charging_w FROM characteristics_battery WHERE wired_charging_w IS NOT NULL ORDER BY wired_charging_w"),
             'cam_mp'       => array_map('num_limpio', $col("SELECT DISTINCT resolution_mp FROM camera_modules WHERE camera_type = 'Principal' AND resolution_mp IS NOT NULL ORDER BY resolution_mp")),
             'cam_size'     => $col("SELECT DISTINCT sensor_size FROM camera_modules WHERE camera_type = 'Principal' AND sensor_size IS NOT NULL AND sensor_size != '' ORDER BY sensor_size"),
@@ -42,6 +44,8 @@ function cargar_listas(PDO $conexion) {
 
         // Sugerencias fijas de materiales (se mezclan con los que ya existen en la base de datos)
         $listas['sug_marco']   = array_values(array_unique(array_merge(['Plástico', 'Metal', 'Aluminio', 'Aleación de titanio'], $listas['frame_mat'])));
+        $listas['sug_proteccion'] = array_values(array_unique(array_merge(['Corning Gorilla Glass Victus', 'Corning Gorilla Glass Victus 2', 'Corning Gorilla Glass Armor', 'Corning Gorilla Glass 7i', 'Asahi Dragontrail', 'Cristal Ceramic Shield', 'Schott Xensation'], $listas['protections'])));
+        $listas['sug_bateria'] = array_values(array_unique(array_merge(['Ion-Li', 'Li-Po', 'Si-C', 'Semisólida'], $listas['battery_types'])));
         $listas['sug_trasera'] = array_values(array_unique(array_merge(['Plástico', 'Vidrio', 'Cerámica', 'Cuero sintético / vegano'], $listas['back_mat'])));
 
         return $listas;

@@ -240,6 +240,11 @@ textarea {
     align-items: center;
 }
 
+/* Utilidad: oculta cualquier elemento (siempre gana a otras reglas de display) */
+.oculto {
+    display: none !important;
+}
+
 /* ==========================================================================
    CABECERA COMÚN (includes/header.php): sesión, botón de cerrar sesión y enlace rojo de administración
    ========================================================================== */

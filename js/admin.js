@@ -33,7 +33,12 @@ function agregarVersionMemoria(v) {
                 <input type="number" step="0.01" min="0" name="${n(r.col)}" value="${esc(v[r.col])}" placeholder="Precio en ${esc(r.moneda)}">
             </div>`;
     }).join('');
-    const hayPrecios = ADMIN_DATA.regiones.some(function (r) { return v[r.col] !== undefined && v[r.col] !== ''; });
+    const monedaActual = v.carrier_currency || 'EUR';
+    const opcionesMoneda = ADMIN_DATA.monedas.map(function (m) {
+        return '<option value="' + esc(m.codigo) + '"' + (m.codigo === monedaActual ? ' selected' : '') + '>' + esc(m.nombre) + '</option>';
+    }).join('');
+    const hayOperadora = (v.price_carrier !== undefined && v.price_carrier !== '') || (v.carrier_details !== undefined && v.carrier_details !== '');
+    const hayPrecios = hayOperadora || ADMIN_DATA.regiones.some(function (r) { return v[r.col] !== undefined && v[r.col] !== ''; });
 
     const caja = document.createElement('div');
     caja.className = 'storage-version-row';
@@ -48,6 +53,17 @@ function agregarVersionMemoria(v) {
         <details class="precios-version"${hayPrecios ? ' open' : ''}>
             <summary>💶 Precios de esta versión</summary>
             <div class="precios-version-grid">${precios}</div>
+            <div class="precio-operadora-version">
+                <h5 class="precio-operadora-titulo">📡 Exclusivo operadora</h5>
+                <div class="precio-operadora-fila">
+                    <div><label>Precio:</label><input type="number" step="0.01" min="0" name="${n('price_carrier')}" value="${esc(v.price_carrier)}" placeholder="Precio con operadora"></div>
+                    <div><label>Moneda:</label><select name="${n('carrier_currency')}">${opcionesMoneda}</select></div>
+                </div>
+                <div>
+                    <label>Comentario de esta versión de operadora:</label>
+                    <textarea name="${n('carrier_details')}" rows="3" placeholder="Nombre de la operadora, condiciones, permanencia...">${esc(v.carrier_details)}</textarea>
+                </div>
+            </div>
         </details>
     `;
     cont.appendChild(caja);
@@ -65,6 +81,32 @@ function pintarVersiones() {
    Cada tipo de vídeo admite dos opciones de resolución + fps (ej: 4K 120fps y 8K 30fps).
    ============================================================================ */
 let contadorAux = 0;
+
+// Pasa un tipo guardado con otra forma de escribirlo ("ultra gran angular", "Infrarojos") al nombre oficial de la lista
+function canonizarTipo(tipo) {
+    const original = String(tipo === null || tipo === undefined ? '' : tipo);
+    const clave = original.trim().toLowerCase();
+    const lista = ADMIN_DATA.tiposCamaraAux;
+    for (let i = 0; i < lista.length; i++) {
+        if (lista[i].toLowerCase() === clave) return lista[i];
+    }
+    const alias = { 'infrarojos': 'Infrarrojos', 'microscopico': 'Microscópico' };
+    return alias[clave] || original;
+}
+
+// Los sensores que no graban vídeo (ToF, LiDAR, infrarrojos...) no muestran el apartado de vídeo
+function tipoTieneVideo(tipo) {
+    if (!tipo) return true;
+    return ADMIN_DATA.tiposSinVideo.indexOf(canonizarTipo(tipo)) === -1;
+}
+
+// Se ejecuta al cambiar el tipo de una cámara auxiliar: muestra u oculta su apartado de vídeo
+function actualizarVideoCamara(select) {
+    const caja = select.closest('.aux-camara-box');
+    if (!caja) return;
+    const bloque = caja.querySelector('.cam-video-bloque');
+    if (bloque) bloque.classList.toggle('oculto', !tipoTieneVideo(select.value));
+}
 
 function filaVideo(n, titulo, campoHas, campoRes, campoFps, activo, res, fps, res2, fps2) {
     const cabecera = campoHas
@@ -85,17 +127,20 @@ function camposCamara(prefijo, c, conTipo) {
     const n = function (campo) { return prefijo + '[' + campo + ']'; };
 
     let selectorTipo = '';
+    let conVideo = true;
     if (conTipo) {
+        const tipoActual = canonizarTipo(c.type);
         const tipos = ADMIN_DATA.tiposCamaraAux.slice();
-        if (c.type && tipos.indexOf(c.type) === -1) tipos.push(c.type);
+        if (tipoActual && tipos.indexOf(tipoActual) === -1) tipos.push(tipoActual);
         const opciones = tipos.map(function (t) {
-            return '<option value="' + esc(t) + '"' + (t === c.type ? ' selected' : '') + '>' + esc(t.charAt(0).toUpperCase() + t.slice(1)) + '</option>';
+            return '<option value="' + esc(t) + '"' + (t === tipoActual ? ' selected' : '') + '>' + esc(t) + '</option>';
         }).join('');
+        conVideo = tipoTieneVideo(tipoActual);
         selectorTipo = `
             <div>
                 <label>Tipo de Cámara:</label>
-                <select name="${n('type')}" required>
-                    ${c.type ? '' : '<option value="">-- Seleccionar Tipo --</option>'}
+                <select name="${n('type')}" required onchange="actualizarVideoCamara(this)">
+                    ${tipoActual ? '' : '<option value="">-- Seleccionar Tipo --</option>'}
                     ${opciones}
                 </select>
             </div>`;
@@ -109,7 +154,7 @@ function camposCamara(prefijo, c, conTipo) {
             <div><label>Megapíxeles (MP):</label><input type="number" step="0.01" name="${n('resolution_mp')}" value="${esc(c.resolution_mp)}"></div>
             <div><label>Apertura Focal:</label><input type="number" step="0.01" name="${n('aperture')}" value="${esc(c.aperture)}" placeholder="Ej: 1.8"></div>
         </div>
-        <div class="cam-video-bloque">
+        <div class="cam-video-bloque${conVideo ? '' : ' oculto'}">
             ${filaVideo(n, 'Vídeo normal máx.', null, 'video_res', 'video_fps', false, c.video_res, c.video_fps, c.video_res2, c.video_fps2)}
             ${filaVideo(n, 'LOG', 'has_log', 'log_res', 'log_fps', c.has_log, c.log_res, c.log_fps, c.log_res2, c.log_fps2)}
             ${filaVideo(n, 'OpenGate', 'has_og', 'og_res', 'og_fps', c.has_og, c.og_res, c.og_fps, c.og_res2, c.og_fps2)}
@@ -140,19 +185,6 @@ function pintarCamaras() {
 }
 
 /* ============================================================================
-   PRECIOS REGIONALES (versión base): muestra u oculta el campo según el checkbox
-   ============================================================================ */
-function togglePriceInput(checkbox, boxId) {
-    const box = document.getElementById(boxId);
-    if (!box) return;
-    box.classList.toggle('oculto', !checkbox.checked);
-    if (!checkbox.checked) {
-        const input = box.querySelector('input');
-        if (input) input.value = '';
-    }
-}
-
-/* ============================================================================
    NOTA MEDIA AUTOMÁTICA: suma de los 6 puntos entre 6 (igual que al guardar en el servidor)
    ============================================================================ */
 function calcularMedia() {
@@ -166,6 +198,39 @@ function calcularMedia() {
     }
     const salida = document.getElementById('score_avg');
     if (salida) salida.value = hayNota ? (Math.round(suma / 6 * 100) / 100).toFixed(2).replace(/\.?0+$/, '') : '';
+}
+
+/* ============================================================================
+   PRIORIDAD "OBTENIDO": muestra la caja de texto de los colores que ya tengo comprados
+   ============================================================================ */
+function mostrarColoresObtenidos() {
+    const select = document.getElementById('select-prioridad');
+    const caja = document.getElementById('caja-colores-obtenidos');
+    if (!select || !caja) return;
+    caja.classList.toggle('oculto', select.value !== 'obtenido');
+}
+
+/* ============================================================================
+   TARJETA SIM: sin la casilla MicroSD marcada se ocultan las opciones que contienen "MicroSD"
+   ============================================================================ */
+function actualizarOpcionesSim() {
+    const select = document.getElementById('select-sim');
+    const casilla = document.getElementById('check-microsd');
+    if (!select || !casilla) return;
+
+    // La primera vez se usa el valor guardado; después, lo que esté elegido en ese momento
+    const actual = (select.dataset.iniciado === '1') ? select.value : (ADMIN_DATA.simActual || '');
+    select.dataset.iniciado = '1';
+
+    select.innerHTML = '<option value="">-- Sin indicar --</option>';
+    ADMIN_DATA.opcionesSim.forEach(function (opcion) {
+        if (!casilla.checked && opcion.toLowerCase().indexOf('microsd') !== -1) return;
+        const o = document.createElement('option');
+        o.value = opcion;
+        o.textContent = opcion;
+        if (opcion === actual) o.selected = true;
+        select.appendChild(o);
+    });
 }
 
 /* ============================================================================
@@ -241,6 +306,8 @@ window.addEventListener('DOMContentLoaded', function () {
     pintarVersiones();
     pintarCamaras();
     calcularMedia();
+    actualizarOpcionesSim();
+    mostrarColoresObtenidos();
     variantesElegidas = (ADMIN_DATA.variantes || []).slice();
     pintarVariantes();
 });

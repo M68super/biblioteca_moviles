@@ -77,6 +77,78 @@ function prioridades() {
     ];
 }
 
+// Monedas entre las que se puede elegir en el precio "exclusivo operadora" de cada versión (las mismas de las regiones)
+function monedas_disponibles() {
+    return [
+        'EUR' => ['simbolo' => '€',   'nombre' => 'EUR · Euro'],
+        'CNY' => ['simbolo' => '¥',   'nombre' => 'CNY · Yuan chino'],
+        'INR' => ['simbolo' => '₹',   'nombre' => 'INR · Rupia india'],
+        'JPY' => ['simbolo' => '¥',   'nombre' => 'JPY · Yen japonés'],
+        'KRW' => ['simbolo' => '₩',   'nombre' => 'KRW · Won coreano'],
+        'USD' => ['simbolo' => '$',   'nombre' => 'USD · Dólar estadounidense'],
+        'MXN' => ['simbolo' => 'MXN', 'nombre' => 'MXN · Peso mexicano'],
+        'TWD' => ['simbolo' => 'TWD', 'nombre' => 'TWD · Nuevo dólar taiwanés'],
+        'RUB' => ['simbolo' => '₽',   'nombre' => 'RUB · Rublo ruso'],
+    ];
+}
+
+// Símbolo de una moneda a partir de su código (si no se conoce, se devuelve el propio código)
+function simbolo_moneda($codigo) {
+    $monedas = monedas_disponibles();
+    return isset($monedas[$codigo]) ? $monedas[$codigo]['simbolo'] : (string)$codigo;
+}
+
+// Tipos de cámara en el orden en que aparecen en el panel admin
+function tipos_camara_auxiliar() {
+    return [
+        'Ultra Gran Angular', 'Principal', 'Teleobjetivo Telescópico', 'Teleobjetivo Periscópico',
+        'Selfie', 'Selfie Bajo Pantalla', 'Macro', 'Infrarrojos', 'Monocromo', 'Multiespectral',
+        'RGB Ambiental', 'Biométrico (Face ID)', 'ToF 3D', 'LiDAR', 'Térmico', 'Microscópico',
+        'Anti-Parpadeo (Flicker Sensor)',
+    ];
+}
+
+// Tipos de cámara que son sensores y NO graban vídeo: en el panel admin y en la ficha no se muestra su apartado de vídeo
+function tipos_camara_sin_video() {
+    return [
+        'Infrarrojos', 'Monocromo', 'Multiespectral', 'RGB Ambiental', 'Biométrico (Face ID)',
+        'ToF 3D', 'LiDAR', 'Anti-Parpadeo (Flicker Sensor)',
+    ];
+}
+
+// Convierte un tipo guardado con otra forma de escribirlo ("ultra gran angular", "Infrarojos", "Lidar") al nombre oficial de la lista
+function canonizar_tipo_camara($tipo) {
+    $tipo = trim((string)$tipo);
+    $clave = mb_strtolower($tipo, 'UTF-8');
+    foreach (tipos_camara_auxiliar() as $oficial) {
+        if (mb_strtolower($oficial, 'UTF-8') === $clave) return $oficial;
+    }
+    $alias = ['infrarojos' => 'Infrarrojos', 'microscopico' => 'Microscópico', 'tof 3d' => 'ToF 3D'];
+    return $alias[$clave] ?? $tipo;
+}
+
+// ¿Este tipo de cámara puede grabar vídeo? (los tipos desconocidos se consideran que sí, para no perder datos)
+function tipo_camara_tiene_video($tipo) {
+    return !in_array(canonizar_tipo_camara($tipo), tipos_camara_sin_video(), true);
+}
+
+// Opciones de la tarjeta SIM. Las que contienen "MicroSD" solo se ofrecen si el móvil tiene ranura MicroSD
+function opciones_sim() {
+    return [
+        '1 SIM',
+        'Dual SIM',
+        'SIM + MicroSD',
+        'Dual SIM + MicroSD',
+        'Dual SIM híbrido (SIM 2 o MicroSD)',
+        'Solo MicroSD (sin SIM)',
+        'Sin SIM física (solo eSIM)',
+    ];
+}
+
+function sim_requiere_microsd($opcion) {
+    return stripos((string)$opcion, 'MicroSD') !== false;
+}
+
 // Dirección segura para un <img src>: solo rutas subidas (uploads/...) o enlaces http(s). Si no, vacío.
 function url_imagen($v) {
     $v = trim((string)$v);
@@ -165,10 +237,11 @@ function esquema_requerido() {
     $columnas_precio = array_column(regiones_precio(), 'col');
     return [
         'phones' => ['operative_system_id', 'variant_group_id'],
-        'phone_metadata' => ['score_1', 'score_2', 'score_3', 'score_4', 'score_5', 'score_6', 'personal_comment', 'priority'],
-        'characteristics_storage_versions' => array_merge(['ram_gb', 'storage_gb'], $columnas_precio),
-        'characteristics_battery' => ['assured_cycles_80_health'],
-        'characteristics_connectivity' => ['android_auto'],
+        'phone_metadata' => ['score_1', 'score_2', 'score_3', 'score_4', 'score_5', 'score_6', 'personal_comment', 'priority', 'owned_colors'],
+        'characteristics_storage_versions' => array_merge(['ram_gb', 'storage_gb', 'price_carrier', 'carrier_currency', 'carrier_details'], $columnas_precio),
+        'characteristics_screen' => ['max_brightness_nits', 'protection'],
+        'characteristics_battery' => ['battery_type', 'assured_cycles_80_health'],
+        'characteristics_connectivity' => ['android_auto', 'microsd', 'sim_config'],
         'camera_modules' => ['normal_video_max_2', 'log_resolution_2', 'log_fps_2', 'opengate_resolution_2', 'opengate_fps_2', 'opengate_log_resolution_2', 'opengate_log_fps_2'],
     ];
 }
@@ -211,7 +284,7 @@ function exigir_esquema(PDO $conexion) {
         echo '<h1>Base de datos desactualizada</h1>';
         echo '<p>Faltan estas columnas: <code>' . escapar(implode(', ', $falta)) . '</code></p>';
         echo '<p>Ejecuta en phpMyAdmin, por este orden y solo los que no hayas ejecutado ya: ';
-        echo '<code>migracion_notas.sql</code>, <code>migracion_bateria_video_auto.sql</code> y <code>migracion_2026-10-23.sql</code>.</p>';
+        echo '<code>migracion_notas.sql</code>, <code>migracion_bateria_video_auto.sql</code>, <code>migracion_2026-10-23.sql</code> y <code>migracion_2026-10-24.sql</code>.</p>';
     } else {
         echo '<h1>Catálogo en mantenimiento</h1><p>Estamos actualizando la base de datos. Vuelve en unos minutos.</p>';
     }

@@ -56,6 +56,13 @@ $ejecutado = false;
 $informe = [];
 
 try {
+    // En una base de datos creada desde cero ya no existen las columnas de texto antiguas: no hay nada que convertir
+    $antiguas = (int)$conexion->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'characteristics_storage_versions'
+          AND COLUMN_NAME IN ('ram_capacities_gb', 'storage_capacities_gb')")->fetchColumn();
+    if ($antiguas < 2) {
+        $filas = [];
+    } else {
     $filas = $conexion->query("
         SELECT sv.*, p.name AS movil, b.name AS marca
         FROM characteristics_storage_versions sv
@@ -66,6 +73,7 @@ try {
         WHERE sv.ram_gb IS NULL OR sv.storage_gb IS NULL
         ORDER BY b.name, p.name, sv.id
     ")->fetchAll();
+    }
 
     // Se calcula la propuesta de cada fila pendiente
     foreach ($filas as $sv) {

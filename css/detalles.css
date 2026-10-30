@@ -225,3 +225,26 @@
     font-size: 0.8rem;
     color: #64748b;
 }
+
+
+/* --- Tarjeta "Precios por versión" --- */
+.version-precios {
+    padding: 8px 0 12px;
+    border-bottom: 1px dashed #e0e5ed;
+}
+
+.version-precios:last-child {
+    border-bottom: none;
+}
+
+.version-precios-titulo {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    color: #263d62;
+}
+
+/* --- Prioridad "Obtenido": colores que ya tengo comprados --- */
+.colores-obtenidos {
+    margin: 6px 0 0;
+    font-size: 0.95rem;
+}

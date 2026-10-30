@@ -21,7 +21,7 @@ $claves_filtro = [
     'f_cam_mp', 'f_cam_size',
     'f_log', 'f_opengate', 'f_opengate_log',
     'f_tier', 'f_ip', 'f_frame_material', 'f_back_material', 'f_peso_max',
-    'f_network', 'f_wifi', 'f_bt', 'f_nfc', 'f_esim', 'f_android_auto',
+    'f_network', 'f_wifi', 'f_bt', 'f_nfc', 'f_esim', 'f_android_auto', 'f_microsd', 'f_sim',
 ];
 foreach ($regiones as $clave => $info) {
     $claves_filtro[] = 'p_' . $clave . '_min';
@@ -39,7 +39,11 @@ try {
     $sql = "
         SELECT DISTINCT p.id, p.name AS movil, p.launch_year, p.tier,
                b.name AS marca, s.name AS familia,
-               meta.image_url, meta.score_avg, meta.price_global
+               meta.image_url, meta.score_avg,
+               COALESCE(
+                   (SELECT MIN(svp.price_global) FROM characteristics_storage_versions svp WHERE svp.phone_characteristic_id = pc.id AND svp.price_global > 0),
+                   (SELECT MIN(svp.price_ue) FROM characteristics_storage_versions svp WHERE svp.phone_characteristic_id = pc.id AND svp.price_ue > 0)
+               ) AS precio_desde
         FROM phones p
         INNER JOIN series s ON s.id = p.series_id
         INNER JOIN brands b ON b.id = s.brand_id
@@ -137,7 +141,7 @@ try {
     if ($F['f_back_material'] !== '')  { $sql .= " AND meta.back_material = :bmat";    $params['bmat'] = $F['f_back_material']; }
     if ($F['f_peso_max'] !== '')       { $sql .= " AND meta.weight_g <= :peso";        $params['peso'] = (int)$F['f_peso_max']; }
 
-    // 10. Precios por región (las columnas salen de regiones_precio(), no del usuario)
+    // 10. Precios por región: se buscan en las versiones de memoria (las columnas salen de regiones_precio(), no del usuario)
     foreach ($regiones as $clave => $info) {
         $min = $F['p_' . $clave . '_min'];
         $max = $F['p_' . $clave . '_max'];
@@ -145,8 +149,12 @@ try {
             $error_precio = 'El precio mínimo en ' . $info['corto'] . ' no puede ser mayor que el máximo.';
             continue;
         }
-        if ($min !== '' && is_numeric($min)) { $sql .= " AND meta.{$info['col']} >= :pmin_$clave"; $params["pmin_$clave"] = (float)$min; }
-        if ($max !== '' && is_numeric($max)) { $sql .= " AND meta.{$info['col']} <= :pmax_$clave"; $params["pmax_$clave"] = (float)$max; }
+        $cond_precio = [];
+        if ($min !== '' && is_numeric($min)) { $cond_precio[] = "svp.{$info['col']} >= :pmin_$clave"; $params["pmin_$clave"] = (float)$min; }
+        if ($max !== '' && is_numeric($max)) { $cond_precio[] = "svp.{$info['col']} <= :pmax_$clave"; $params["pmax_$clave"] = (float)$max; }
+        if (!empty($cond_precio)) {
+            $sql .= " AND EXISTS (SELECT 1 FROM characteristics_storage_versions svp WHERE svp.phone_characteristic_id = pc.id AND svp.{$info['col']} > 0 AND " . implode(' AND ', $cond_precio) . ")";
+        }
     }
 
     // 11. Conectividad
@@ -156,6 +164,8 @@ try {
     if ($F['f_nfc'] === '1' || $F['f_nfc'] === '0')   { $sql .= " AND conn.nfc = :nfc";           $params['nfc'] = (int)$F['f_nfc']; }
     if ($F['f_esim'] === '1' || $F['f_esim'] === '0') { $sql .= " AND conn.esim_support = :esim"; $params['esim'] = (int)$F['f_esim']; }
     if ($F['f_android_auto'] === '1' || $F['f_android_auto'] === '0') { $sql .= " AND conn.android_auto = :aauto"; $params['aauto'] = (int)$F['f_android_auto']; }
+    if ($F['f_microsd'] === '1' || $F['f_microsd'] === '0') { $sql .= " AND conn.microsd = :microsd"; $params['microsd'] = (int)$F['f_microsd']; }
+    if ($F['f_sim'] !== '' && in_array($F['f_sim'], opciones_sim(), true)) { $sql .= " AND conn.sim_config = :sim"; $params['sim'] = $F['f_sim']; }
 
     $sql .= " ORDER BY marca ASC, movil ASC";
     $stmt = $conexion->prepare($sql);

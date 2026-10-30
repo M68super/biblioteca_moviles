@@ -240,7 +240,7 @@ require __DIR__ . '/includes/header.php';
                 foreach ($regiones as $clave => $info) { $claves_precio[] = 'p_' . $clave . '_min'; $claves_precio[] = 'p_' . $clave . '_max'; }
                 ?>
                 <details class="categoria-filtro"<?= abierto($F, $claves_precio) ?>>
-                    <summary>💶 10. Precio por Región</summary>
+                    <summary>💶 10. Precio por Región (de cualquier versión)</summary>
                     <div class="categoria-contenido">
                         <?php foreach ($regiones as $clave => $info): ?>
                             <div>
@@ -255,7 +255,7 @@ require __DIR__ . '/includes/header.php';
                 </details>
 
                 <!-- 11. Conectividad -->
-                <details class="categoria-filtro"<?= abierto($F, ['f_network', 'f_wifi', 'f_bt', 'f_nfc', 'f_esim', 'f_android_auto']) ?>>
+                <details class="categoria-filtro"<?= abierto($F, ['f_network', 'f_wifi', 'f_bt', 'f_nfc', 'f_esim', 'f_android_auto', 'f_microsd', 'f_sim']) ?>>
                     <summary>📡 11. Conectividad</summary>
                     <div class="categoria-contenido">
                         <div>
@@ -293,6 +293,18 @@ require __DIR__ . '/includes/header.php';
                                 <option value="1"<?= $F['f_android_auto'] === '1' ? ' selected' : '' ?>>Sí</option>
                                 <option value="0"<?= $F['f_android_auto'] === '0' ? ' selected' : '' ?>>No</option>
                             </select>
+                        </div>
+                        <div>
+                            <label>MicroSD:</label>
+                            <select name="f_microsd">
+                                <option value="">-- Indiferente --</option>
+                                <option value="1"<?= $F['f_microsd'] === '1' ? ' selected' : '' ?>>Sí</option>
+                                <option value="0"<?= $F['f_microsd'] === '0' ? ' selected' : '' ?>>No</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Tarjeta SIM:</label>
+                            <select name="f_sim"><option value="">-- Cualquiera --</option><?= opciones(opciones_sim(), $F['f_sim']) ?></select>
                         </div>
                     </div>
                 </details>
@@ -343,11 +355,11 @@ require __DIR__ . '/includes/header.php';
                                 <p class="anio">Lanzamiento: <?= escapar($m['launch_year']) ?>
                                     <?php if (!empty($m['tier'])): ?><span class="tier-badge"><?= escapar($m['tier']) ?></span><?php endif; ?>
                                 </p>
-                                <?php $tiene_nota = (float)($m['score_avg'] ?? 0) > 0; $tiene_precio = (float)($m['price_global'] ?? 0) > 0; ?>
+                                <?php $tiene_nota = (float)($m['score_avg'] ?? 0) > 0; $tiene_precio = (float)($m['precio_desde'] ?? 0) > 0; ?>
                                 <?php if ($tiene_nota || $tiene_precio): ?>
                                     <div class="card-pie">
                                         <span class="card-nota"><?= $tiene_nota ? '★ ' . number_format((float)$m['score_avg'], 1) : '' ?></span>
-                                        <span class="card-precio"><?= $tiene_precio ? number_format((float)$m['price_global'], 2, ',', '.') . ' €' : '' ?></span>
+                                        <span class="card-precio"><?= $tiene_precio ? 'Desde ' . number_format((float)$m['precio_desde'], (floor((float)$m['precio_desde']) == (float)$m['precio_desde']) ? 0 : 2, ',', '.') . ' €' : '' ?></span>
                                     </div>
                                 <?php endif; ?>
                             </article>

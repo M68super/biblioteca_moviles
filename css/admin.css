@@ -193,7 +193,7 @@
 }
 
 .oculto {
-    display: none;
+    display: none !important;
 }
 
 /* Botones de función del panel admin: el modo activo se ve en color, el resto en gris */
@@ -416,4 +416,38 @@
 
 .tabla-simple th {
     background: #eef2f7;
+}
+
+
+/* --- Precio exclusivo de operadora dentro de cada versión de memoria --- */
+.precio-operadora-version {
+    margin-top: 14px;
+    padding: 12px;
+    background: #ffffff;
+    border: 1px dashed #94a3b8;
+    border-radius: 6px;
+}
+
+.precio-operadora-titulo {
+    margin: 0 0 10px;
+    font-size: 0.95rem;
+    color: #334155;
+}
+
+.precio-operadora-fila {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.precio-operadora-version textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+@media (max-width: 600px) {
+    .precio-operadora-fila {
+        grid-template-columns: 1fr;
+    }
 }
